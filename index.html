@@ -7,7 +7,7 @@
     content="width=device-width, initial-scale=1.0"
   />
 
-  <title>Widebody Airport Route and Turnaround Dashboard</title>
+  <title>Widebody Flight Distance Dashboard</title>
 
   <link
     rel="stylesheet"
@@ -38,7 +38,7 @@
     }
 
     body {
-      height: 100vh;
+      min-height: 100vh;
       overflow: hidden;
       display: flex;
       flex-direction: column;
@@ -55,7 +55,7 @@
       gap: 14px;
       border-bottom: 1px solid var(--border);
       background: var(--bg-surface);
-      z-index: 1200;
+      z-index: 1500;
     }
 
     h1 {
@@ -82,8 +82,8 @@
     }
 
     #sidebar {
-      width: 405px;
-      min-width: 330px;
+      width: 420px;
+      min-width: 340px;
       overflow-y: auto;
       padding: 18px;
       display: flex;
@@ -110,11 +110,13 @@
       background: var(--bg-primary);
       color: var(--text-muted);
       font-size: 0.76rem;
+      line-height: 1.35;
     }
 
     .status-dot {
       width: 8px;
       height: 8px;
+      flex: 0 0 auto;
       border-radius: 50%;
       background: var(--warning);
       box-shadow: 0 0 8px rgb(245 158 11 / 0.6);
@@ -169,7 +171,7 @@
       outline: none;
       background: var(--bg-primary);
       color: var(--text-main);
-      font-size: 0.87rem;
+      font-size: 0.86rem;
     }
 
     input:focus {
@@ -216,7 +218,7 @@
       top: calc(100% + 6px);
       right: 0;
       left: 0;
-      z-index: 3000;
+      z-index: 4000;
       display: none;
       max-height: 310px;
       overflow-y: auto;
@@ -287,10 +289,14 @@
       color: #fbbf24;
     }
 
-    .airport-empty {
-      padding: 14px;
+    .airport-empty,
+    .airport-finder-message {
+      padding: 12px;
+      border: 1px dashed var(--border);
+      border-radius: 6px;
       color: var(--text-muted);
-      font-size: 0.8rem;
+      font-size: 0.75rem;
+      line-height: 1.45;
       text-align: center;
     }
 
@@ -405,9 +411,82 @@
       color: var(--accent);
     }
 
+    .airport-finder-output {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      max-height: 330px;
+      overflow-y: auto;
+    }
+
+    .airport-match {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      padding: 9px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg-primary);
+      color: var(--text-main);
+      cursor: pointer;
+      text-align: left;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+
+    .airport-match:hover {
+      border-color: var(--accent);
+      background: rgb(56 189 248 / 0.12);
+      color: var(--text-main);
+    }
+
+    .airport-match-code {
+      min-width: 42px;
+      padding: 3px 5px;
+      border: 1px solid rgb(56 189 248 / 0.45);
+      border-radius: 4px;
+      color: var(--accent);
+      font-size: 0.7rem;
+      font-weight: 800;
+      text-align: center;
+    }
+
+    .airport-match-details {
+      min-width: 0;
+    }
+
+    .airport-match-city {
+      display: block;
+      overflow: hidden;
+      color: var(--text-main);
+      font-size: 0.79rem;
+      font-weight: 750;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .airport-match-name {
+      display: block;
+      margin-top: 2px;
+      overflow: hidden;
+      color: var(--text-muted);
+      font-size: 0.68rem;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .airport-match-distance {
+      color: var(--success);
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-align: right;
+      white-space: nowrap;
+    }
+
     @media (max-width: 850px) {
       body {
-        min-height: 100vh;
         overflow: auto;
       }
 
@@ -458,8 +537,8 @@
 
 <body>
   <header>
-    <h1>Widebody Operations Fleet Dashboard</h1>
-    <div class="badge">CSV Airport Database + Search</div>
+    <h1>Widebody Flight Distance Dashboard</h1>
+    <div class="badge">Airport Search + Route Match</div>
   </header>
 
   <main class="main-container">
@@ -471,7 +550,7 @@
 
       <div class="airport-grid">
         <div class="control-group airport-picker">
-          <label for="origin-input">Origin Airport</label>
+          <label for="origin-input">Airport A — Origin</label>
 
           <div class="combobox">
             <input
@@ -520,7 +599,7 @@
         </div>
 
         <div class="control-group airport-picker">
-          <label for="destination-input">Destination Airport</label>
+          <label for="destination-input">Airport B — Destination</label>
 
           <div class="combobox">
             <input
@@ -557,36 +636,22 @@
       </div>
 
       <button id="turnover-btn" class="btn" type="button" disabled>
-        Analyze Turnover ×2
+        Analyze Route
       </button>
 
       <section class="results-box">
         <div class="result-item">
           <span>Great-circle distance</span>
-          <span id="distance-display" class="result-value">
-            —
-          </span>
+          <span id="distance-display" class="result-value">—</span>
         </div>
 
         <div class="result-item">
           <span>One-way flight time</span>
-          <span id="time-display" class="result-value">
-            —
-          </span>
+          <span id="time-display" class="result-value">—</span>
         </div>
 
         <div class="result-item">
-          <span>One turnaround</span>
-          <span
-            id="single-turnaround-display"
-            class="result-value warning"
-          >
-            —
-          </span>
-        </div>
-
-        <div class="result-item">
-          <span>Turnaround ×2</span>
+          <span>Route turnaround</span>
           <span
             id="turnaround-display"
             class="result-value warning"
@@ -628,7 +693,7 @@
 
       <section class="tool-section">
         <label for="solve-time-input">
-          Distance from target block time
+          Distance from target total time
         </label>
 
         <div class="row-grid">
@@ -637,7 +702,7 @@
             type="number"
             min="0"
             step="0.01"
-            placeholder="Hours"
+            placeholder="Block hours"
           />
 
           <button id="solve-dist-btn" class="btn" type="button">
@@ -648,13 +713,49 @@
         <div id="solve-dist-output" class="solver-output"></div>
       </section>
 
+      <section class="tool-section">
+        <label for="airport-finder-distance">
+          Find Airport B from Airport A
+        </label>
+
+        <div class="row-grid">
+          <input
+            id="airport-finder-distance"
+            type="number"
+            min="0"
+            step="1"
+            placeholder="Target km"
+          />
+
+          <button
+            id="airport-finder-btn"
+            class="btn"
+            type="button"
+            disabled
+          >
+            Find B
+          </button>
+        </div>
+
+        <p class="info-note">
+          Searches the loaded CSV for up to 10 Airport B options
+          within ±100 km of your target distance from Airport A.
+        </p>
+
+        <div
+          id="airport-finder-output"
+          class="airport-finder-output"
+        ></div>
+      </section>
+
       <p class="info-note">
         Fixed speed: <strong>9360 ÷ 22 = 425.4545 km/h</strong>.
-        Turnaround per station: under 1,500 km = 1h;
+        Route turnaround bands: under 1,500 km = 1h;
         1,500–3,999.99 km = 1h 30m;
         4,000–9,999.99 km = 2h;
-        10,000 km or more = 2h 30m.
-        The total block-time includes two turnaround events.
+        10,000 km or above = 2h 30m.
+        A 9,360 km route therefore calculates as 22h flight +
+        2h turnaround = <strong>24h total</strong>.
       </p>
     </aside>
 
@@ -670,23 +771,30 @@
     "use strict";
 
     /*
-      Keep airports.csv in the same directory as this HTML file.
+      ONE-FILE DASHBOARD SCRIPT
 
-      This parser detects common CSV header variants:
-      IATA / iata_code / iata
-      ICAO / icao_code / gps_code
-      Name / name / airport_name
-      City / municipality / city
-      Latitude / latitude_deg / lat
-      Longitude / longitude_deg / lon / lng
+      Keep airports.csv in exactly the same folder as index.html.
+
+      The script recognizes common airport CSV headers:
+      - IATA, iata_code, iata
+      - ICAO, icao_code, gps_code, ident
+      - Name, airport_name
+      - City, municipality
+      - Latitude, latitude_deg, lat
+      - Longitude, longitude_deg, lon, lng
     */
 
     const CSV_FILE = "airports.csv";
+
     const SPEED_KMH = 9360 / 22;
     const EARTH_RADIUS_KM = 6371;
-    const MAX_SEARCH_RESULTS = 75;
+
+    const SEARCH_RESULT_LIMIT = 75;
+    const AIRPORT_MATCH_TOLERANCE_KM = 100;
+    const AIRPORT_MATCH_LIMIT = 10;
 
     let airports = [];
+    let routeLayer = null;
 
     const airportState = {
       origin: null,
@@ -699,14 +807,17 @@
     const originInput = document.getElementById("origin-input");
     const destinationInput = document.getElementById("destination-input");
 
-    const originClearButton = document.getElementById("origin-clear-btn");
-    const destinationClearButton = document.getElementById(
-      "destination-clear-btn"
-    );
-
     const originResults = document.getElementById("origin-results");
     const destinationResults = document.getElementById(
       "destination-results"
+    );
+
+    const originClearButton = document.getElementById(
+      "origin-clear-btn"
+    );
+
+    const destinationClearButton = document.getElementById(
+      "destination-clear-btn"
     );
 
     const swapButton = document.getElementById("swap-route-btn");
@@ -714,12 +825,10 @@
 
     const distanceDisplay = document.getElementById("distance-display");
     const timeDisplay = document.getElementById("time-display");
-    const singleTurnaroundDisplay = document.getElementById(
-      "single-turnaround-display"
-    );
     const turnaroundDisplay = document.getElementById(
       "turnaround-display"
     );
+
     const totalBlockDisplay = document.getElementById(
       "total-block-display"
     );
@@ -727,12 +836,29 @@
     const solveDistanceInput = document.getElementById(
       "solve-dist-input"
     );
-    const solveTimeInput = document.getElementById("solve-time-input");
+
+    const solveTimeInput = document.getElementById(
+      "solve-time-input"
+    );
+
     const solveTimeOutput = document.getElementById(
       "solve-time-output"
     );
+
     const solveDistanceOutput = document.getElementById(
       "solve-dist-output"
+    );
+
+    const airportFinderDistanceInput = document.getElementById(
+      "airport-finder-distance"
+    );
+
+    const airportFinderButton = document.getElementById(
+      "airport-finder-btn"
+    );
+
+    const airportFinderOutput = document.getElementById(
+      "airport-finder-output"
     );
 
     const map = L.map("map", {
@@ -763,12 +889,13 @@
           OpenStreetMap: openStreetMap
         },
         null,
-        { position: "topright" }
+        {
+          position: "topright"
+        }
       )
       .addTo(map);
 
     const markerGroup = L.layerGroup().addTo(map);
-    let routeLayer = null;
 
     function setStatus(message, mode = "loading") {
       dataStatus.classList.remove("ready", "error");
@@ -791,12 +918,12 @@
         .replace(/[^a-z0-9]/g, "");
     }
 
-    function findHeaderIndex(headers, candidates) {
+    function findHeaderIndex(headers, possibleNames) {
       const normalizedHeaders = headers.map(normalizeHeader);
 
-      for (const candidate of candidates) {
+      for (const possibleName of possibleNames) {
         const index = normalizedHeaders.indexOf(
-          normalizeHeader(candidate)
+          normalizeHeader(possibleName)
         );
 
         if (index !== -1) {
@@ -807,12 +934,9 @@
       return -1;
     }
 
-    /*
-      Handles quoted CSV fields, embedded commas, and escaped quotes.
-    */
     function parseCsvLine(line) {
-      const fields = [];
-      let currentField = "";
+      const values = [];
+      let value = "";
       let insideQuotes = false;
 
       for (let index = 0; index < line.length; index++) {
@@ -821,22 +945,22 @@
 
         if (character === '"') {
           if (insideQuotes && nextCharacter === '"') {
-            currentField += '"';
+            value += '"';
             index++;
           } else {
             insideQuotes = !insideQuotes;
           }
         } else if (character === "," && !insideQuotes) {
-          fields.push(currentField.trim());
-          currentField = "";
+          values.push(value.trim());
+          value = "";
         } else {
-          currentField += character;
+          value += character;
         }
       }
 
-      fields.push(currentField.trim());
+      values.push(value.trim());
 
-      return fields;
+      return values;
     }
 
     function parseAirportCsv(csvText) {
@@ -846,18 +970,18 @@
         .filter((line) => line.trim().length > 0);
 
       if (lines.length < 2) {
-        throw new Error("The CSV contains no airport rows.");
+        throw new Error("The CSV does not contain airport data rows.");
       }
 
       const headers = parseCsvLine(lines[0]);
 
-      const indexIata = findHeaderIndex(headers, [
+      const iataIndex = findHeaderIndex(headers, [
         "iata",
         "iata_code",
         "iata code"
       ]);
 
-      const indexIcao = findHeaderIndex(headers, [
+      const icaoIndex = findHeaderIndex(headers, [
         "icao",
         "icao_code",
         "icao code",
@@ -866,27 +990,27 @@
         "ident"
       ]);
 
-      const indexName = findHeaderIndex(headers, [
+      const nameIndex = findHeaderIndex(headers, [
         "name",
         "airport_name",
         "airport name"
       ]);
 
-      const indexCity = findHeaderIndex(headers, [
+      const cityIndex = findHeaderIndex(headers, [
         "city",
         "municipality",
         "served_city",
         "served city"
       ]);
 
-      const indexLatitude = findHeaderIndex(headers, [
+      const latitudeIndex = findHeaderIndex(headers, [
         "latitude",
         "latitude_deg",
         "latitude deg",
         "lat"
       ]);
 
-      const indexLongitude = findHeaderIndex(headers, [
+      const longitudeIndex = findHeaderIndex(headers, [
         "longitude",
         "longitude_deg",
         "longitude deg",
@@ -895,38 +1019,42 @@
       ]);
 
       if (
-        indexName === -1 ||
-        indexLatitude === -1 ||
-        indexLongitude === -1
+        nameIndex === -1 ||
+        latitudeIndex === -1 ||
+        longitudeIndex === -1
       ) {
         throw new Error(
-          "The CSV must include airport name, latitude, and longitude columns."
+          "CSV headers must include airport name, latitude, and longitude."
         );
       }
 
       const parsedAirports = [];
       const duplicateKeys = new Set();
 
-      for (let rowIndex = 1; rowIndex < lines.length; rowIndex++) {
-        const row = parseCsvLine(lines[rowIndex]);
+      for (let rowNumber = 1; rowNumber < lines.length; rowNumber++) {
+        const row = parseCsvLine(lines[rowNumber]);
 
         const iata =
-          indexIata >= 0 ? String(row[indexIata] || "").trim() : "";
-
-        const icao =
-          indexIcao >= 0 ? String(row[indexIcao] || "").trim() : "";
-
-        const name = String(row[indexName] || "").trim();
-
-        const city =
-          indexCity >= 0
-            ? String(row[indexCity] || "").trim()
+          iataIndex >= 0
+            ? String(row[iataIndex] || "").trim()
             : "";
 
-        const latitude = Number(row[indexLatitude]);
-        const longitude = Number(row[indexLongitude]);
+        const icao =
+          icaoIndex >= 0
+            ? String(row[icaoIndex] || "").trim()
+            : "";
 
-        const hasCoordinates =
+        const name = String(row[nameIndex] || "").trim();
+
+        const city =
+          cityIndex >= 0
+            ? String(row[cityIndex] || "").trim()
+            : "";
+
+        const latitude = Number(row[latitudeIndex]);
+        const longitude = Number(row[longitudeIndex]);
+
+        const validCoordinates =
           Number.isFinite(latitude) &&
           Number.isFinite(longitude) &&
           latitude >= -90 &&
@@ -934,13 +1062,18 @@
           longitude >= -180 &&
           longitude <= 180;
 
-        const searchableCode = iata || icao;
+        const hasAirportCode = Boolean(iata || icao);
 
-        if (!name || !searchableCode || !hasCoordinates) {
+        if (!name || !hasAirportCode || !validCoordinates) {
           continue;
         }
 
-        const uniqueKey = `${iata}|${icao}|${latitude}|${longitude}`;
+        const uniqueKey = [
+          iata,
+          icao,
+          latitude,
+          longitude
+        ].join("|");
 
         if (duplicateKeys.has(uniqueKey)) {
           continue;
@@ -959,10 +1092,10 @@
       }
 
       return parsedAirports.sort((airportA, airportB) => {
-        const cityCompare = airportA.city.localeCompare(airportB.city);
+        const byCity = airportA.city.localeCompare(airportB.city);
 
-        if (cityCompare !== 0) {
-          return cityCompare;
+        if (byCity !== 0) {
+          return byCity;
         }
 
         return airportA.name.localeCompare(airportB.name);
@@ -984,18 +1117,19 @@
         }
 
         const csvText = await response.text();
+
         airports = parseAirportCsv(csvText);
 
         if (airports.length === 0) {
           throw new Error(
-            "No valid, searchable airport records were found."
+            "No valid searchable airport records were found."
           );
         }
 
-        enableAirportInputs();
+        enableInterface();
 
         setStatus(
-          `${airports.length.toLocaleString()} valid airports loaded from ${CSV_FILE}.`,
+          `${airports.length.toLocaleString()} valid airports loaded.`,
           "ready"
         );
 
@@ -1004,26 +1138,28 @@
         console.error(error);
 
         setStatus(
-          `${error.message} Run this through a local web server and ensure airports.csv is beside index.html.`,
+          `${error.message} Use a local server and confirm airports.csv is in the same folder as index.html.`,
           "error"
         );
       }
     }
 
-    function enableAirportInputs() {
+    function enableInterface() {
       originInput.disabled = false;
       destinationInput.disabled = false;
+
       originClearButton.disabled = false;
       destinationClearButton.disabled = false;
+
       swapButton.disabled = false;
       turnoverButton.disabled = false;
+      airportFinderButton.disabled = false;
 
-      originInput.placeholder = "Type city, IATA, ICAO, or airport";
-      destinationInput.placeholder = "Type city, IATA, ICAO, or airport";
-    }
+      originInput.placeholder =
+        "Search city, IATA, ICAO, or airport";
 
-    function airportLabel(airport) {
-      return `${airport.city} (${airport.iata}/${airport.icao}) — ${airport.name}`;
+      destinationInput.placeholder =
+        "Search city, IATA, ICAO, or airport";
     }
 
     function normalizeSearchText(value) {
@@ -1032,6 +1168,13 @@
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "")
         .trim();
+    }
+
+    function airportLabel(airport) {
+      return (
+        `${airport.city} (${airport.iata}/${airport.icao}) — ` +
+        airport.name
+      );
     }
 
     function airportSearchText(airport) {
@@ -1045,22 +1188,22 @@
       );
     }
 
-    function findAirports(query, limit = MAX_SEARCH_RESULTS) {
+    function findAirports(query) {
       const normalizedQuery = normalizeSearchText(query);
 
       if (!normalizedQuery) {
-        return airports.slice(0, limit);
+        return airports.slice(0, SEARCH_RESULT_LIMIT);
       }
 
       const codeMatches = [];
       const cityMatches = [];
-      const nameMatches = [];
+      const textMatches = [];
 
       for (const airport of airports) {
         const iata = normalizeSearchText(airport.iata);
         const icao = normalizeSearchText(airport.icao);
         const city = normalizeSearchText(airport.city);
-        const allText = airportSearchText(airport);
+        const text = airportSearchText(airport);
 
         if (
           iata.startsWith(normalizedQuery) ||
@@ -1069,15 +1212,16 @@
           codeMatches.push(airport);
         } else if (city.startsWith(normalizedQuery)) {
           cityMatches.push(airport);
-        } else if (allText.includes(normalizedQuery)) {
-          nameMatches.push(airport);
+        } else if (text.includes(normalizedQuery)) {
+          textMatches.push(airport);
         }
       }
 
-      return [...codeMatches, ...cityMatches, ...nameMatches].slice(
-        0,
-        limit
-      );
+      return [
+        ...codeMatches,
+        ...cityMatches,
+        ...textMatches
+      ].slice(0, SEARCH_RESULT_LIMIT);
     }
 
     function escapeHtml(value) {
@@ -1094,8 +1238,8 @@
     }
 
     function highlightMatch(text, query) {
-      const safeText = escapeHtml(text);
       const cleanQuery = String(query || "").trim();
+      const safeText = escapeHtml(text);
 
       if (!cleanQuery) {
         return safeText;
@@ -1113,7 +1257,7 @@
       const input =
         type === "origin" ? originInput : destinationInput;
 
-      const results =
+      const resultList =
         type === "origin" ? originResults : destinationResults;
 
       const clearButton =
@@ -1124,31 +1268,29 @@
       let matches = [];
       let highlightedIndex = -1;
 
-      function setExpanded(isExpanded) {
-        results.classList.toggle("open", isExpanded);
-        input.setAttribute("aria-expanded", String(isExpanded));
+      function setExpanded(isOpen) {
+        resultList.classList.toggle("open", isOpen);
+        input.setAttribute("aria-expanded", String(isOpen));
       }
 
       function renderResults(query = input.value) {
         matches = findAirports(query);
         highlightedIndex = -1;
-
-        results.replaceChildren();
+        resultList.replaceChildren();
 
         if (matches.length === 0) {
-          const empty = document.createElement("div");
+          const emptyMessage = document.createElement("div");
+          emptyMessage.className = "airport-empty";
+          emptyMessage.textContent = "No airport matches that search.";
+          resultList.appendChild(emptyMessage);
 
-          empty.className = "airport-empty";
-          empty.textContent = "No airport matches that search.";
-
-          results.appendChild(empty);
           setExpanded(true);
-
           return;
         }
 
         for (let index = 0; index < matches.length; index++) {
           const airport = matches[index];
+
           const option = document.createElement("div");
 
           option.className = "airport-option";
@@ -1177,21 +1319,21 @@
             selectAirport(airport);
           });
 
-          results.appendChild(option);
+          resultList.appendChild(option);
         }
 
         setExpanded(true);
       }
 
-      function updateHighlight() {
-        const options = results.querySelectorAll(".airport-option");
+      function updateKeyboardHighlight() {
+        const options = resultList.querySelectorAll(".airport-option");
 
         options.forEach((option, index) => {
-          const isActive = index === highlightedIndex;
+          const active = index === highlightedIndex;
 
-          option.classList.toggle("active", isActive);
+          option.classList.toggle("active", active);
 
-          if (isActive) {
+          if (active) {
             input.setAttribute(
               "aria-activedescendant",
               `${type}-option-${index}`
@@ -1210,6 +1352,7 @@
 
       function selectAirport(airport) {
         airportState[type] = airport;
+
         input.value = airportLabel(airport);
         input.classList.remove("invalid");
 
@@ -1219,11 +1362,12 @@
 
       function clearAirport() {
         airportState[type] = null;
+
         input.value = "";
         input.classList.remove("invalid");
-        input.removeAttribute("aria-activedescendant");
 
         setExpanded(false);
+        updateRoute();
       }
 
       input.addEventListener("focus", () => {
@@ -1240,12 +1384,12 @@
       });
 
       input.addEventListener("keydown", (event) => {
-        const isOpen = results.classList.contains("open");
+        const listOpen = resultList.classList.contains("open");
 
         if (event.key === "ArrowDown") {
           event.preventDefault();
 
-          if (!isOpen) {
+          if (!listOpen) {
             renderResults(input.value);
           }
 
@@ -1254,19 +1398,23 @@
             matches.length - 1
           );
 
-          updateHighlight();
+          updateKeyboardHighlight();
           return;
         }
 
         if (event.key === "ArrowUp") {
           event.preventDefault();
 
-          if (!isOpen) {
+          if (!listOpen) {
             renderResults(input.value);
           }
 
-          highlightedIndex = Math.max(highlightedIndex - 1, 0);
-          updateHighlight();
+          highlightedIndex = Math.max(
+            highlightedIndex - 1,
+            0
+          );
+
+          updateKeyboardHighlight();
           return;
         }
 
@@ -1288,15 +1436,15 @@
 
           const normalizedInput = normalizeSearchText(input.value);
 
-          const exactAirport = airports.find((airport) => {
+          const exactCodeMatch = airports.find((airport) => {
             return (
               normalizeSearchText(airport.iata) === normalizedInput ||
               normalizeSearchText(airport.icao) === normalizedInput
             );
           });
 
-          if (exactAirport) {
-            selectAirport(exactAirport);
+          if (exactCodeMatch) {
+            selectAirport(exactCodeMatch);
           }
 
           return;
@@ -1339,23 +1487,23 @@
     const originPicker = createAirportPicker("origin");
     const destinationPicker = createAirportPicker("destination");
 
-    function findPreferredAirport(iataCode) {
-      const normalizedCode = String(iataCode).toUpperCase();
+    function findAirportByIata(iataCode) {
+      const normalizedIata = String(iataCode).toUpperCase();
 
       return airports.find((airport) => {
-        return airport.iata.toUpperCase() === normalizedCode;
+        return airport.iata.toUpperCase() === normalizedIata;
       });
     }
 
     function setDefaultAirports() {
       const defaultOrigin =
-        findPreferredAirport("HKG") ||
-        findPreferredAirport("HND") ||
+        findAirportByIata("HKG") ||
+        findAirportByIata("HND") ||
         airports[0];
 
       const defaultDestination =
-        findPreferredAirport("LHR") ||
-        findPreferredAirport("LAX") ||
+        findAirportByIata("LHR") ||
+        findAirportByIata("LAX") ||
         airports[1] ||
         airports[0];
 
@@ -1375,6 +1523,7 @@
     ) {
       const phi1 = toRadians(lat1);
       const phi2 = toRadians(lat2);
+
       const deltaPhi = toRadians(lat2 - lat1);
       const deltaLambda = toRadians(lon2 - lon1);
 
@@ -1384,7 +1533,10 @@
           Math.cos(phi2) *
           Math.sin(deltaLambda / 2) ** 2;
 
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      const c = 2 * Math.atan2(
+        Math.sqrt(a),
+        Math.sqrt(1 - a)
+      );
 
       return EARTH_RADIUS_KM * c;
     }
@@ -1417,20 +1569,22 @@
       return 2.5;
     }
 
-    function totalBlockHoursFromDistance(
-      distanceKm,
-      turnaroundCount = 2
-    ) {
+    /*
+      Correct rule: one route turnaround only.
+
+      Example:
+      9360 km ÷ 425.4545 km/h = 22h flight.
+      9360 km is within the 4000–9999.99 km band = 2h turnaround.
+      Total = 24h.
+    */
+    function totalBlockHoursFromDistance(distanceKm) {
       return (
         flightHoursFromDistance(distanceKm) +
-        turnaroundHoursFromDistance(distanceKm) * turnaroundCount
+        turnaroundHoursFromDistance(distanceKm)
       );
     }
 
-    function distanceFromTargetBlockHours(
-      targetHours,
-      turnaroundCount = 2
-    ) {
+    function distanceFromTargetBlockHours(targetHours) {
       if (!Number.isFinite(targetHours) || targetHours < 0) {
         return null;
       }
@@ -1460,16 +1614,15 @@
 
       for (const band of distanceBands) {
         const distance =
-          (targetHours -
-            band.turnaroundHours * turnaroundCount) *
+          (targetHours - band.turnaroundHours) *
           SPEED_KMH;
 
-        const insideBand =
+        const validForBand =
           distance >= band.minimum &&
           (band.maximum === Infinity ||
             distance < band.maximum);
 
-        if (insideBand) {
+        if (validForBand) {
           return distance;
         }
       }
@@ -1490,28 +1643,29 @@
     }
 
     function getGeodesicPoints(
-      airportA,
-      airportB,
+      origin,
+      destination,
       segments = 140
     ) {
-      const latitude1 = toRadians(airportA.lat);
-      const longitude1 = toRadians(airportA.lon);
-      const latitude2 = toRadians(airportB.lat);
-      const longitude2 = toRadians(airportB.lon);
+      const lat1 = toRadians(origin.lat);
+      const lon1 = toRadians(origin.lon);
+
+      const lat2 = toRadians(destination.lat);
+      const lon2 = toRadians(destination.lon);
 
       const angularDistance =
         2 *
         Math.asin(
           Math.sqrt(
-            Math.sin((latitude1 - latitude2) / 2) ** 2 +
-              Math.cos(latitude1) *
-                Math.cos(latitude2) *
-                Math.sin((longitude1 - longitude2) / 2) ** 2
+            Math.sin((lat1 - lat2) / 2) ** 2 +
+              Math.cos(lat1) *
+                Math.cos(lat2) *
+                Math.sin((lon1 - lon2) / 2) ** 2
           )
         );
 
       if (angularDistance < 0.0000001) {
-        return [[airportA.lat, airportA.lon]];
+        return [[origin.lat, origin.lon]];
       }
 
       const points = [];
@@ -1519,33 +1673,25 @@
       for (let index = 0; index <= segments; index++) {
         const fraction = index / segments;
 
-        const componentA =
+        const a =
           Math.sin((1 - fraction) * angularDistance) /
           Math.sin(angularDistance);
 
-        const componentB =
+        const b =
           Math.sin(fraction * angularDistance) /
           Math.sin(angularDistance);
 
         const x =
-          componentA *
-            Math.cos(latitude1) *
-            Math.cos(longitude1) +
-          componentB *
-            Math.cos(latitude2) *
-            Math.cos(longitude2);
+          a * Math.cos(lat1) * Math.cos(lon1) +
+          b * Math.cos(lat2) * Math.cos(lon2);
 
         const y =
-          componentA *
-            Math.cos(latitude1) *
-            Math.sin(longitude1) +
-          componentB *
-            Math.cos(latitude2) *
-            Math.sin(longitude2);
+          a * Math.cos(lat1) * Math.sin(lon1) +
+          b * Math.cos(lat2) * Math.sin(lon2);
 
         const z =
-          componentA * Math.sin(latitude1) +
-          componentB * Math.sin(latitude2);
+          a * Math.sin(lat1) +
+          b * Math.sin(lat2);
 
         const latitude = Math.atan2(
           z,
@@ -1563,30 +1709,31 @@
       return points;
     }
 
-    function splitAtInternationalDateLine(points) {
+    function splitAtDateLine(points) {
       const routeParts = [[]];
 
       for (let index = 0; index < points.length; index++) {
-        const currentPoint = points[index];
+        const point = points[index];
         const previousPoint = points[index - 1];
 
         if (
           previousPoint &&
-          Math.abs(currentPoint[1] - previousPoint[1]) > 180
+          Math.abs(point[1] - previousPoint[1]) > 180
         ) {
           routeParts.push([]);
         }
 
-        routeParts[routeParts.length - 1].push(currentPoint);
+        routeParts[routeParts.length - 1].push(point);
       }
 
-      return routeParts.filter((part) => part.length > 0);
+      return routeParts.filter((routePart) => {
+        return routePart.length > 0;
+      });
     }
 
-    function resetRouteDisplays() {
+    function resetRouteDisplay() {
       distanceDisplay.textContent = "—";
       timeDisplay.textContent = "—";
-      singleTurnaroundDisplay.textContent = "—";
       turnaroundDisplay.textContent = "—";
       totalBlockDisplay.textContent = "—";
     }
@@ -1603,7 +1750,7 @@
       }
 
       if (!origin || !destination) {
-        resetRouteDisplays();
+        resetRouteDisplay();
         return;
       }
 
@@ -1615,22 +1762,21 @@
       );
 
       const flightHours = flightHoursFromDistance(distance);
+
       const turnaroundHours =
         turnaroundHoursFromDistance(distance);
 
-      const totalTurnaroundHours = turnaroundHours * 2;
-
       const totalBlockHours =
-        flightHours + totalTurnaroundHours;
+        totalBlockHoursFromDistance(distance);
 
-      distanceDisplay.textContent = `${distance.toFixed(2)} km`;
-      timeDisplay.textContent = formatDuration(flightHours);
+      distanceDisplay.textContent =
+        `${distance.toFixed(2)} km`;
 
-      singleTurnaroundDisplay.textContent =
-        formatDuration(turnaroundHours);
+      timeDisplay.textContent =
+        formatDuration(flightHours);
 
       turnaroundDisplay.textContent =
-        formatDuration(totalTurnaroundHours);
+        formatDuration(turnaroundHours);
 
       totalBlockDisplay.textContent =
         formatDuration(totalBlockHours);
@@ -1640,8 +1786,8 @@
         origin.lon
       ]).bindPopup(
         `<strong>${escapeHtml(origin.city)}</strong><br>` +
-          `${escapeHtml(origin.name)}<br>` +
-          `${escapeHtml(origin.iata)} / ${escapeHtml(origin.icao)}`
+        `${escapeHtml(origin.name)}<br>` +
+        `${escapeHtml(origin.iata)} / ${escapeHtml(origin.icao)}`
       );
 
       const destinationMarker = L.marker([
@@ -1649,8 +1795,8 @@
         destination.lon
       ]).bindPopup(
         `<strong>${escapeHtml(destination.city)}</strong><br>` +
-          `${escapeHtml(destination.name)}<br>` +
-          `${escapeHtml(destination.iata)} / ${escapeHtml(destination.icao)}`
+        `${escapeHtml(destination.name)}<br>` +
+        `${escapeHtml(destination.iata)} / ${escapeHtml(destination.icao)}`
       );
 
       markerGroup.addLayer(originMarker);
@@ -1664,18 +1810,13 @@
         return;
       }
 
-      const geodesicPoints = getGeodesicPoints(
-        origin,
-        destination
-      );
-
-      const routeParts =
-        splitAtInternationalDateLine(geodesicPoints);
+      const points = getGeodesicPoints(origin, destination);
+      const routeParts = splitAtDateLine(points);
 
       routeLayer = L.layerGroup();
 
-      for (const part of routeParts) {
-        L.polyline(part, {
+      for (const routePart of routeParts) {
+        L.polyline(routePart, {
           color: "#38bdf8",
           weight: 4,
           opacity: 0.86,
@@ -1697,16 +1838,138 @@
       });
     }
 
-    swapButton.addEventListener("click", () => {
-      const previousOrigin = airportState.origin;
-      const previousDestination = airportState.destination;
+    function findAirportBMatches(
+      originAirport,
+      targetDistanceKm
+    ) {
+      const matches = [];
 
-      if (!previousOrigin || !previousDestination) {
+      for (const candidateAirport of airports) {
+        const sameCoordinates =
+          candidateAirport.lat === originAirport.lat &&
+          candidateAirport.lon === originAirport.lon;
+
+        if (sameCoordinates) {
+          continue;
+        }
+
+        const actualDistance = calculateGreatCircleDistance(
+          originAirport.lat,
+          originAirport.lon,
+          candidateAirport.lat,
+          candidateAirport.lon
+        );
+
+        const difference = Math.abs(
+          actualDistance - targetDistanceKm
+        );
+
+        if (difference <= AIRPORT_MATCH_TOLERANCE_KM) {
+          matches.push({
+            airport: candidateAirport,
+            distance: actualDistance,
+            difference
+          });
+        }
+      }
+
+      return matches
+        .sort((matchA, matchB) => {
+          if (matchA.difference !== matchB.difference) {
+            return matchA.difference - matchB.difference;
+          }
+
+          return matchA.distance - matchB.distance;
+        })
+        .slice(0, AIRPORT_MATCH_LIMIT);
+    }
+
+    function showAirportFinderMessage(message) {
+      airportFinderOutput.replaceChildren();
+
+      const messageElement = document.createElement("div");
+
+      messageElement.className = "airport-finder-message";
+      messageElement.textContent = message;
+
+      airportFinderOutput.appendChild(messageElement);
+    }
+
+    function renderAirportBMatches(matches, targetDistanceKm) {
+      airportFinderOutput.replaceChildren();
+
+      if (matches.length === 0) {
+        showAirportFinderMessage(
+          `No Airport B records were found between ` +
+          `${(targetDistanceKm - AIRPORT_MATCH_TOLERANCE_KM).toFixed(0)} km ` +
+          `and ` +
+          `${(targetDistanceKm + AIRPORT_MATCH_TOLERANCE_KM).toFixed(0)} km ` +
+          `from Airport A.`
+        );
+
         return;
       }
 
-      originPicker.selectAirport(previousDestination);
-      destinationPicker.selectAirport(previousOrigin);
+      for (const match of matches) {
+        const airport = match.airport;
+
+        const result = document.createElement("button");
+
+        result.type = "button";
+        result.className = "airport-match";
+
+        result.innerHTML = `
+          <span class="airport-match-code">
+            ${escapeHtml(airport.iata)}
+          </span>
+
+          <span class="airport-match-details">
+            <span class="airport-match-city">
+              ${escapeHtml(airport.city)}
+            </span>
+
+            <span class="airport-match-name">
+              ${escapeHtml(airport.name)} ·
+              ${escapeHtml(airport.icao)}
+            </span>
+          </span>
+
+          <span class="airport-match-distance">
+            ${match.distance.toFixed(0)} km<br>
+            ±${match.difference.toFixed(0)}
+          </span>
+        `;
+
+        result.title =
+          `Choose ${airport.city} (${airport.iata}) as Airport B. ` +
+          `Actual distance: ${match.distance.toFixed(2)} km. ` +
+          `Difference from target: ${match.difference.toFixed(2)} km.`;
+
+        result.addEventListener("click", () => {
+          destinationPicker.selectAirport(airport);
+
+          showAirportFinderMessage(
+            `${airport.city} (${airport.iata}) is now Airport B. ` +
+            `Actual distance from ${airportState.origin.city} ` +
+            `(${airportState.origin.iata}): ` +
+            `${match.distance.toFixed(2)} km.`
+          );
+        });
+
+        airportFinderOutput.appendChild(result);
+      }
+    }
+
+    swapButton.addEventListener("click", () => {
+      const origin = airportState.origin;
+      const destination = airportState.destination;
+
+      if (!origin || !destination) {
+        return;
+      }
+
+      originPicker.selectAirport(destination);
+      destinationPicker.selectAirport(origin);
     });
 
     turnoverButton.addEventListener("click", updateRoute);
@@ -1724,19 +1987,16 @@
         }
 
         const flightHours = flightHoursFromDistance(distance);
+
         const turnaroundHours =
           turnaroundHoursFromDistance(distance);
 
-        const totalHours = totalBlockHoursFromDistance(
-          distance,
-          2
-        );
+        const totalHours =
+          totalBlockHoursFromDistance(distance);
 
         solveTimeOutput.textContent =
           `Flight: ${formatDuration(flightHours)} | ` +
-          `Turnaround ×2: ${formatDuration(
-            turnaroundHours * 2
-          )} | ` +
+          `Turnaround: ${formatDuration(turnaroundHours)} | ` +
           `Total: ${formatDuration(totalHours)}`;
       });
 
@@ -1747,19 +2007,17 @@
 
         if (!Number.isFinite(targetHours) || targetHours < 0) {
           solveDistanceOutput.textContent =
-            "Enter a valid target time of zero or greater.";
+            "Enter a valid block time of zero or greater.";
 
           return;
         }
 
-        const distance = distanceFromTargetBlockHours(
-          targetHours,
-          2
-        );
+        const distance =
+          distanceFromTargetBlockHours(targetHours);
 
         if (distance === null) {
           solveDistanceOutput.textContent =
-            "No distance satisfies that total time under the turnaround bands.";
+            "No valid distance exists for that time under the current turnaround bands.";
 
           return;
         }
@@ -1769,18 +2027,71 @@
 
         solveDistanceOutput.textContent =
           `${distance.toFixed(2)} km | ` +
-          `One turnaround: ${formatDuration(
-            turnaroundHours
-          )} | ` +
-          `Total block time: ${formatDuration(targetHours)}`;
+          `Turnaround: ${formatDuration(turnaroundHours)} | ` +
+          `Total: ${formatDuration(targetHours)}`;
       });
 
+    airportFinderButton.addEventListener("click", () => {
+      const originAirport = airportState.origin;
+
+      const targetDistanceKm = Number(
+        airportFinderDistanceInput.value
+      );
+
+      if (!originAirport) {
+        showAirportFinderMessage(
+          "Choose Airport A before searching for Airport B."
+        );
+
+        return;
+      }
+
+      if (
+        !Number.isFinite(targetDistanceKm) ||
+        targetDistanceKm < 0
+      ) {
+        showAirportFinderMessage(
+          "Enter a valid target distance in kilometres."
+        );
+
+        return;
+      }
+
+      const matches = findAirportBMatches(
+        originAirport,
+        targetDistanceKm
+      );
+
+      renderAirportBMatches(matches, targetDistanceKm);
+    });
+
+    airportFinderDistanceInput.addEventListener(
+      "keydown",
+      (event) => {
+        if (event.key === "Enter") {
+          airportFinderButton.click();
+        }
+      }
+    );
+
+    solveDistanceInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        document.getElementById("solve-time-btn").click();
+      }
+    });
+
+    solveTimeInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        document.getElementById("solve-dist-btn").click();
+      }
+    });
+
     document.addEventListener("click", (event) => {
-      const clickedInsidePicker = event.target.closest(
+      const insideAirportPicker = event.target.closest(
         ".airport-picker"
       );
 
-      if (clickedInsidePicker) {
+      if (insideAirportPicker) {
         return;
       }
 
