@@ -1,1 +1,1797 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
 
+  <title>Widebody Airport Route and Turnaround Dashboard</title>
+
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    crossorigin=""
+  />
+
+  <style>
+    :root {
+      --bg-primary: #0f172a;
+      --bg-surface: #1e293b;
+      --bg-panel: #111c31;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --border: #334155;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont,
+        "Segoe UI", Roboto, Arial, sans-serif;
+    }
+
+    body {
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-primary);
+      color: var(--text-main);
+    }
+
+    header {
+      min-height: 64px;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg-surface);
+      z-index: 1200;
+    }
+
+    h1 {
+      color: var(--accent);
+      font-size: 1.18rem;
+    }
+
+    .badge {
+      padding: 5px 9px;
+      border: 1px solid var(--accent);
+      border-radius: 5px;
+      background: rgb(56 189 248 / 0.12);
+      color: var(--accent);
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.03em;
+      white-space: nowrap;
+    }
+
+    .main-container {
+      display: flex;
+      flex: 1;
+      min-height: 0;
+    }
+
+    #sidebar {
+      width: 405px;
+      min-width: 330px;
+      overflow-y: auto;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      border-right: 1px solid var(--border);
+      background: var(--bg-surface);
+      z-index: 1100;
+    }
+
+    #map {
+      flex: 1;
+      min-width: 0;
+      height: 100%;
+    }
+
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg-primary);
+      color: var(--text-muted);
+      font-size: 0.76rem;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--warning);
+      box-shadow: 0 0 8px rgb(245 158 11 / 0.6);
+    }
+
+    .status.ready .status-dot {
+      background: var(--success);
+      box-shadow: 0 0 8px rgb(16 185 129 / 0.6);
+    }
+
+    .status.error .status-dot {
+      background: var(--danger);
+      box-shadow: 0 0 8px rgb(239 68 68 / 0.6);
+    }
+
+    .airport-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 42px minmax(0, 1fr);
+      align-items: end;
+      gap: 10px;
+    }
+
+    .control-group,
+    .tool-section {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .airport-picker {
+      position: relative;
+      min-width: 0;
+    }
+
+    label {
+      color: var(--text-muted);
+      font-size: 0.73rem;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .combobox {
+      position: relative;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px 36px 10px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      outline: none;
+      background: var(--bg-primary);
+      color: var(--text-main);
+      font-size: 0.87rem;
+    }
+
+    input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgb(56 189 248 / 0.12);
+    }
+
+    input.invalid {
+      border-color: var(--danger);
+      box-shadow: 0 0 0 3px rgb(239 68 68 / 0.12);
+    }
+
+    input:disabled,
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+
+    .input-icon-btn {
+      position: absolute;
+      top: 50%;
+      right: 6px;
+      width: 28px;
+      height: 28px;
+      padding: 0;
+      transform: translateY(-50%);
+      border: 0;
+      border-radius: 50%;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 1.2rem;
+      line-height: 1;
+      text-transform: none;
+    }
+
+    .input-icon-btn:hover:not(:disabled) {
+      color: var(--text-main);
+      background: rgb(148 163 184 / 0.15);
+    }
+
+    .airport-results {
+      position: absolute;
+      top: calc(100% + 6px);
+      right: 0;
+      left: 0;
+      z-index: 3000;
+      display: none;
+      max-height: 310px;
+      overflow-y: auto;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg-panel);
+      box-shadow: 0 18px 34px rgb(0 0 0 / 0.42);
+    }
+
+    .airport-results.open {
+      display: block;
+    }
+
+    .airport-option {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 9px;
+      padding: 10px;
+      border-bottom: 1px solid rgb(51 65 85 / 0.7);
+      cursor: pointer;
+    }
+
+    .airport-option:last-child {
+      border-bottom: 0;
+    }
+
+    .airport-option:hover,
+    .airport-option.active {
+      background: rgb(56 189 248 / 0.14);
+    }
+
+    .airport-option-code {
+      align-self: start;
+      min-width: 43px;
+      padding: 3px 5px;
+      border: 1px solid rgb(56 189 248 / 0.45);
+      border-radius: 4px;
+      color: var(--accent);
+      font-size: 0.7rem;
+      font-weight: 800;
+      text-align: center;
+    }
+
+    .airport-option-main {
+      display: block;
+      overflow: hidden;
+      color: var(--text-main);
+      font-size: 0.82rem;
+      font-weight: 750;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .airport-option-detail {
+      display: block;
+      margin-top: 2px;
+      overflow: hidden;
+      color: var(--text-muted);
+      font-size: 0.7rem;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    mark {
+      padding: 0;
+      border-radius: 2px;
+      background: rgb(245 158 11 / 0.25);
+      color: #fbbf24;
+    }
+
+    .airport-empty {
+      padding: 14px;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      text-align: center;
+    }
+
+    .swap-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 41px;
+    }
+
+    .swap-btn {
+      width: 38px;
+      height: 38px;
+      padding: 0;
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      background: var(--bg-primary);
+      color: var(--accent);
+      cursor: pointer;
+      font-size: 1.22rem;
+      line-height: 1;
+    }
+
+    .swap-btn:hover:not(:disabled) {
+      border-color: var(--accent);
+      background: var(--accent);
+      color: var(--bg-primary);
+    }
+
+    .btn {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--accent);
+      border-radius: 6px;
+      background: var(--bg-primary);
+      color: var(--accent);
+      cursor: pointer;
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .btn:hover:not(:disabled) {
+      background: var(--accent);
+      color: var(--bg-primary);
+    }
+
+    .results-box {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg-primary);
+    }
+
+    .result-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 0.83rem;
+    }
+
+    .result-value {
+      color: var(--accent);
+      font-size: 0.98rem;
+      font-weight: 800;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .warning {
+      color: var(--warning);
+    }
+
+    .success {
+      color: var(--success);
+    }
+
+    .divider {
+      padding-top: 8px;
+      border-top: 1px dashed var(--border);
+    }
+
+    .tool-section {
+      padding-top: 14px;
+      border-top: 1px solid var(--border);
+    }
+
+    .row-grid {
+      display: grid;
+      grid-template-columns: 1fr 94px;
+      gap: 8px;
+    }
+
+    .row-grid input {
+      padding-right: 10px;
+    }
+
+    .solver-output,
+    .info-note {
+      min-height: 18px;
+      color: var(--text-muted);
+      font-size: 0.71rem;
+      line-height: 1.45;
+    }
+
+    .solver-output {
+      color: var(--accent);
+    }
+
+    @media (max-width: 850px) {
+      body {
+        min-height: 100vh;
+        overflow: auto;
+      }
+
+      header {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .main-container {
+        flex-direction: column;
+      }
+
+      #sidebar {
+        width: 100%;
+        min-width: 0;
+        max-height: 58vh;
+        border-right: 0;
+        border-bottom: 1px solid var(--border);
+      }
+
+      #map {
+        min-height: 44vh;
+      }
+
+      .airport-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .swap-wrap {
+        height: auto;
+      }
+
+      .swap-btn {
+        width: 100%;
+        height: 35px;
+        border-radius: 6px;
+      }
+
+      .airport-results {
+        position: fixed;
+        right: 14px;
+        left: 14px;
+        max-height: 42vh;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>Widebody Operations Fleet Dashboard</h1>
+    <div class="badge">CSV Airport Database + Search</div>
+  </header>
+
+  <main class="main-container">
+    <aside id="sidebar">
+      <div id="data-status" class="status">
+        <span class="status-dot"></span>
+        <span id="data-status-text">Loading airports.csv…</span>
+      </div>
+
+      <div class="airport-grid">
+        <div class="control-group airport-picker">
+          <label for="origin-input">Origin Airport</label>
+
+          <div class="combobox">
+            <input
+              id="origin-input"
+              class="airport-search"
+              type="text"
+              autocomplete="off"
+              disabled
+              placeholder="Loading airport database…"
+              role="combobox"
+              aria-autocomplete="list"
+              aria-expanded="false"
+              aria-controls="origin-results"
+            />
+
+            <button
+              id="origin-clear-btn"
+              class="input-icon-btn"
+              type="button"
+              disabled
+              aria-label="Clear origin"
+              title="Clear origin"
+            >
+              ×
+            </button>
+
+            <div
+              id="origin-results"
+              class="airport-results"
+              role="listbox"
+            ></div>
+          </div>
+        </div>
+
+        <div class="swap-wrap">
+          <button
+            id="swap-route-btn"
+            class="swap-btn"
+            type="button"
+            disabled
+            aria-label="Swap origin and destination"
+            title="Swap route"
+          >
+            ⇄
+          </button>
+        </div>
+
+        <div class="control-group airport-picker">
+          <label for="destination-input">Destination Airport</label>
+
+          <div class="combobox">
+            <input
+              id="destination-input"
+              class="airport-search"
+              type="text"
+              autocomplete="off"
+              disabled
+              placeholder="Loading airport database…"
+              role="combobox"
+              aria-autocomplete="list"
+              aria-expanded="false"
+              aria-controls="destination-results"
+            />
+
+            <button
+              id="destination-clear-btn"
+              class="input-icon-btn"
+              type="button"
+              disabled
+              aria-label="Clear destination"
+              title="Clear destination"
+            >
+              ×
+            </button>
+
+            <div
+              id="destination-results"
+              class="airport-results"
+              role="listbox"
+            ></div>
+          </div>
+        </div>
+      </div>
+
+      <button id="turnover-btn" class="btn" type="button" disabled>
+        Analyze Turnover ×2
+      </button>
+
+      <section class="results-box">
+        <div class="result-item">
+          <span>Great-circle distance</span>
+          <span id="distance-display" class="result-value">
+            —
+          </span>
+        </div>
+
+        <div class="result-item">
+          <span>One-way flight time</span>
+          <span id="time-display" class="result-value">
+            —
+          </span>
+        </div>
+
+        <div class="result-item">
+          <span>One turnaround</span>
+          <span
+            id="single-turnaround-display"
+            class="result-value warning"
+          >
+            —
+          </span>
+        </div>
+
+        <div class="result-item">
+          <span>Turnaround ×2</span>
+          <span
+            id="turnaround-display"
+            class="result-value warning"
+          >
+            —
+          </span>
+        </div>
+
+        <div class="result-item divider">
+          <span>Total block time</span>
+          <span
+            id="total-block-display"
+            class="result-value success"
+          >
+            —
+          </span>
+        </div>
+      </section>
+
+      <section class="tool-section">
+        <label for="solve-dist-input">Time from distance</label>
+
+        <div class="row-grid">
+          <input
+            id="solve-dist-input"
+            type="number"
+            min="0"
+            step="0.01"
+            placeholder="Distance km"
+          />
+
+          <button id="solve-time-btn" class="btn" type="button">
+            Solve
+          </button>
+        </div>
+
+        <div id="solve-time-output" class="solver-output"></div>
+      </section>
+
+      <section class="tool-section">
+        <label for="solve-time-input">
+          Distance from target block time
+        </label>
+
+        <div class="row-grid">
+          <input
+            id="solve-time-input"
+            type="number"
+            min="0"
+            step="0.01"
+            placeholder="Hours"
+          />
+
+          <button id="solve-dist-btn" class="btn" type="button">
+            Solve
+          </button>
+        </div>
+
+        <div id="solve-dist-output" class="solver-output"></div>
+      </section>
+
+      <p class="info-note">
+        Fixed speed: <strong>9360 ÷ 22 = 425.4545 km/h</strong>.
+        Turnaround per station: under 1,500 km = 1h;
+        1,500–3,999.99 km = 1h 30m;
+        4,000–9,999.99 km = 2h;
+        10,000 km or more = 2h 30m.
+        The total block-time includes two turnaround events.
+      </p>
+    </aside>
+
+    <div id="map"></div>
+  </main>
+
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    crossorigin=""
+  ></script>
+
+  <script>
+    "use strict";
+
+    /*
+      Keep airports.csv in the same directory as this HTML file.
+
+      This parser detects common CSV header variants:
+      IATA / iata_code / iata
+      ICAO / icao_code / gps_code
+      Name / name / airport_name
+      City / municipality / city
+      Latitude / latitude_deg / lat
+      Longitude / longitude_deg / lon / lng
+    */
+
+    const CSV_FILE = "airports.csv";
+    const SPEED_KMH = 9360 / 22;
+    const EARTH_RADIUS_KM = 6371;
+    const MAX_SEARCH_RESULTS = 75;
+
+    let airports = [];
+
+    const airportState = {
+      origin: null,
+      destination: null
+    };
+
+    const dataStatus = document.getElementById("data-status");
+    const dataStatusText = document.getElementById("data-status-text");
+
+    const originInput = document.getElementById("origin-input");
+    const destinationInput = document.getElementById("destination-input");
+
+    const originClearButton = document.getElementById("origin-clear-btn");
+    const destinationClearButton = document.getElementById(
+      "destination-clear-btn"
+    );
+
+    const originResults = document.getElementById("origin-results");
+    const destinationResults = document.getElementById(
+      "destination-results"
+    );
+
+    const swapButton = document.getElementById("swap-route-btn");
+    const turnoverButton = document.getElementById("turnover-btn");
+
+    const distanceDisplay = document.getElementById("distance-display");
+    const timeDisplay = document.getElementById("time-display");
+    const singleTurnaroundDisplay = document.getElementById(
+      "single-turnaround-display"
+    );
+    const turnaroundDisplay = document.getElementById(
+      "turnaround-display"
+    );
+    const totalBlockDisplay = document.getElementById(
+      "total-block-display"
+    );
+
+    const solveDistanceInput = document.getElementById(
+      "solve-dist-input"
+    );
+    const solveTimeInput = document.getElementById("solve-time-input");
+    const solveTimeOutput = document.getElementById(
+      "solve-time-output"
+    );
+    const solveDistanceOutput = document.getElementById(
+      "solve-dist-output"
+    );
+
+    const map = L.map("map", {
+      worldCopyJump: true
+    }).setView([20, 0], 2);
+
+    const openStreetMap = L.tileLayer(
+      "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+      {
+        maxZoom: 19,
+        attribution: "&copy; OpenStreetMap contributors"
+      }
+    );
+
+    const satelliteMap = L.tileLayer(
+      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      {
+        attribution: "Tiles &copy; Esri"
+      }
+    );
+
+    satelliteMap.addTo(map);
+
+    L.control
+      .layers(
+        {
+          "Satellite imagery": satelliteMap,
+          OpenStreetMap: openStreetMap
+        },
+        null,
+        { position: "topright" }
+      )
+      .addTo(map);
+
+    const markerGroup = L.layerGroup().addTo(map);
+    let routeLayer = null;
+
+    function setStatus(message, mode = "loading") {
+      dataStatus.classList.remove("ready", "error");
+
+      if (mode === "ready") {
+        dataStatus.classList.add("ready");
+      }
+
+      if (mode === "error") {
+        dataStatus.classList.add("error");
+      }
+
+      dataStatusText.textContent = message;
+    }
+
+    function normalizeHeader(header) {
+      return String(header)
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, "");
+    }
+
+    function findHeaderIndex(headers, candidates) {
+      const normalizedHeaders = headers.map(normalizeHeader);
+
+      for (const candidate of candidates) {
+        const index = normalizedHeaders.indexOf(
+          normalizeHeader(candidate)
+        );
+
+        if (index !== -1) {
+          return index;
+        }
+      }
+
+      return -1;
+    }
+
+    /*
+      Handles quoted CSV fields, embedded commas, and escaped quotes.
+    */
+    function parseCsvLine(line) {
+      const fields = [];
+      let currentField = "";
+      let insideQuotes = false;
+
+      for (let index = 0; index < line.length; index++) {
+        const character = line[index];
+        const nextCharacter = line[index + 1];
+
+        if (character === '"') {
+          if (insideQuotes && nextCharacter === '"') {
+            currentField += '"';
+            index++;
+          } else {
+            insideQuotes = !insideQuotes;
+          }
+        } else if (character === "," && !insideQuotes) {
+          fields.push(currentField.trim());
+          currentField = "";
+        } else {
+          currentField += character;
+        }
+      }
+
+      fields.push(currentField.trim());
+
+      return fields;
+    }
+
+    function parseAirportCsv(csvText) {
+      const lines = csvText
+        .replace(/^\uFEFF/, "")
+        .split(/\r?\n/)
+        .filter((line) => line.trim().length > 0);
+
+      if (lines.length < 2) {
+        throw new Error("The CSV contains no airport rows.");
+      }
+
+      const headers = parseCsvLine(lines[0]);
+
+      const indexIata = findHeaderIndex(headers, [
+        "iata",
+        "iata_code",
+        "iata code"
+      ]);
+
+      const indexIcao = findHeaderIndex(headers, [
+        "icao",
+        "icao_code",
+        "icao code",
+        "gps_code",
+        "gps code",
+        "ident"
+      ]);
+
+      const indexName = findHeaderIndex(headers, [
+        "name",
+        "airport_name",
+        "airport name"
+      ]);
+
+      const indexCity = findHeaderIndex(headers, [
+        "city",
+        "municipality",
+        "served_city",
+        "served city"
+      ]);
+
+      const indexLatitude = findHeaderIndex(headers, [
+        "latitude",
+        "latitude_deg",
+        "latitude deg",
+        "lat"
+      ]);
+
+      const indexLongitude = findHeaderIndex(headers, [
+        "longitude",
+        "longitude_deg",
+        "longitude deg",
+        "lon",
+        "lng"
+      ]);
+
+      if (
+        indexName === -1 ||
+        indexLatitude === -1 ||
+        indexLongitude === -1
+      ) {
+        throw new Error(
+          "The CSV must include airport name, latitude, and longitude columns."
+        );
+      }
+
+      const parsedAirports = [];
+      const duplicateKeys = new Set();
+
+      for (let rowIndex = 1; rowIndex < lines.length; rowIndex++) {
+        const row = parseCsvLine(lines[rowIndex]);
+
+        const iata =
+          indexIata >= 0 ? String(row[indexIata] || "").trim() : "";
+
+        const icao =
+          indexIcao >= 0 ? String(row[indexIcao] || "").trim() : "";
+
+        const name = String(row[indexName] || "").trim();
+
+        const city =
+          indexCity >= 0
+            ? String(row[indexCity] || "").trim()
+            : "";
+
+        const latitude = Number(row[indexLatitude]);
+        const longitude = Number(row[indexLongitude]);
+
+        const hasCoordinates =
+          Number.isFinite(latitude) &&
+          Number.isFinite(longitude) &&
+          latitude >= -90 &&
+          latitude <= 90 &&
+          longitude >= -180 &&
+          longitude <= 180;
+
+        const searchableCode = iata || icao;
+
+        if (!name || !searchableCode || !hasCoordinates) {
+          continue;
+        }
+
+        const uniqueKey = `${iata}|${icao}|${latitude}|${longitude}`;
+
+        if (duplicateKeys.has(uniqueKey)) {
+          continue;
+        }
+
+        duplicateKeys.add(uniqueKey);
+
+        parsedAirports.push({
+          iata: iata || "—",
+          icao: icao || "—",
+          name,
+          city: city || "Unknown city",
+          lat: latitude,
+          lon: longitude
+        });
+      }
+
+      return parsedAirports.sort((airportA, airportB) => {
+        const cityCompare = airportA.city.localeCompare(airportB.city);
+
+        if (cityCompare !== 0) {
+          return cityCompare;
+        }
+
+        return airportA.name.localeCompare(airportB.name);
+      });
+    }
+
+    async function loadAirportDatabase() {
+      setStatus(`Loading ${CSV_FILE}…`);
+
+      try {
+        const response = await fetch(CSV_FILE, {
+          cache: "no-store"
+        });
+
+        if (!response.ok) {
+          throw new Error(
+            `Could not load ${CSV_FILE}: HTTP ${response.status}.`
+          );
+        }
+
+        const csvText = await response.text();
+        airports = parseAirportCsv(csvText);
+
+        if (airports.length === 0) {
+          throw new Error(
+            "No valid, searchable airport records were found."
+          );
+        }
+
+        enableAirportInputs();
+
+        setStatus(
+          `${airports.length.toLocaleString()} valid airports loaded from ${CSV_FILE}.`,
+          "ready"
+        );
+
+        setDefaultAirports();
+      } catch (error) {
+        console.error(error);
+
+        setStatus(
+          `${error.message} Run this through a local web server and ensure airports.csv is beside index.html.`,
+          "error"
+        );
+      }
+    }
+
+    function enableAirportInputs() {
+      originInput.disabled = false;
+      destinationInput.disabled = false;
+      originClearButton.disabled = false;
+      destinationClearButton.disabled = false;
+      swapButton.disabled = false;
+      turnoverButton.disabled = false;
+
+      originInput.placeholder = "Type city, IATA, ICAO, or airport";
+      destinationInput.placeholder = "Type city, IATA, ICAO, or airport";
+    }
+
+    function airportLabel(airport) {
+      return `${airport.city} (${airport.iata}/${airport.icao}) — ${airport.name}`;
+    }
+
+    function normalizeSearchText(value) {
+      return String(value)
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .trim();
+    }
+
+    function airportSearchText(airport) {
+      return normalizeSearchText(
+        [
+          airport.iata,
+          airport.icao,
+          airport.city,
+          airport.name
+        ].join(" ")
+      );
+    }
+
+    function findAirports(query, limit = MAX_SEARCH_RESULTS) {
+      const normalizedQuery = normalizeSearchText(query);
+
+      if (!normalizedQuery) {
+        return airports.slice(0, limit);
+      }
+
+      const codeMatches = [];
+      const cityMatches = [];
+      const nameMatches = [];
+
+      for (const airport of airports) {
+        const iata = normalizeSearchText(airport.iata);
+        const icao = normalizeSearchText(airport.icao);
+        const city = normalizeSearchText(airport.city);
+        const allText = airportSearchText(airport);
+
+        if (
+          iata.startsWith(normalizedQuery) ||
+          icao.startsWith(normalizedQuery)
+        ) {
+          codeMatches.push(airport);
+        } else if (city.startsWith(normalizedQuery)) {
+          cityMatches.push(airport);
+        } else if (allText.includes(normalizedQuery)) {
+          nameMatches.push(airport);
+        }
+      }
+
+      return [...codeMatches, ...cityMatches, ...nameMatches].slice(
+        0,
+        limit
+      );
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function escapeRegExp(value) {
+      return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }
+
+    function highlightMatch(text, query) {
+      const safeText = escapeHtml(text);
+      const cleanQuery = String(query || "").trim();
+
+      if (!cleanQuery) {
+        return safeText;
+      }
+
+      const expression = new RegExp(
+        `(${escapeRegExp(cleanQuery)})`,
+        "ig"
+      );
+
+      return safeText.replace(expression, "<mark>$1</mark>");
+    }
+
+    function createAirportPicker(type) {
+      const input =
+        type === "origin" ? originInput : destinationInput;
+
+      const results =
+        type === "origin" ? originResults : destinationResults;
+
+      const clearButton =
+        type === "origin"
+          ? originClearButton
+          : destinationClearButton;
+
+      let matches = [];
+      let highlightedIndex = -1;
+
+      function setExpanded(isExpanded) {
+        results.classList.toggle("open", isExpanded);
+        input.setAttribute("aria-expanded", String(isExpanded));
+      }
+
+      function renderResults(query = input.value) {
+        matches = findAirports(query);
+        highlightedIndex = -1;
+
+        results.replaceChildren();
+
+        if (matches.length === 0) {
+          const empty = document.createElement("div");
+
+          empty.className = "airport-empty";
+          empty.textContent = "No airport matches that search.";
+
+          results.appendChild(empty);
+          setExpanded(true);
+
+          return;
+        }
+
+        for (let index = 0; index < matches.length; index++) {
+          const airport = matches[index];
+          const option = document.createElement("div");
+
+          option.className = "airport-option";
+          option.id = `${type}-option-${index}`;
+          option.setAttribute("role", "option");
+
+          option.innerHTML = `
+            <span class="airport-option-code">
+              ${highlightMatch(airport.iata, query)}
+            </span>
+
+            <span>
+              <span class="airport-option-main">
+                ${highlightMatch(airport.city, query)}
+              </span>
+
+              <span class="airport-option-detail">
+                ${highlightMatch(airport.name, query)}
+                · ${highlightMatch(airport.icao, query)}
+              </span>
+            </span>
+          `;
+
+          option.addEventListener("mousedown", (event) => {
+            event.preventDefault();
+            selectAirport(airport);
+          });
+
+          results.appendChild(option);
+        }
+
+        setExpanded(true);
+      }
+
+      function updateHighlight() {
+        const options = results.querySelectorAll(".airport-option");
+
+        options.forEach((option, index) => {
+          const isActive = index === highlightedIndex;
+
+          option.classList.toggle("active", isActive);
+
+          if (isActive) {
+            input.setAttribute(
+              "aria-activedescendant",
+              `${type}-option-${index}`
+            );
+
+            option.scrollIntoView({
+              block: "nearest"
+            });
+          }
+        });
+
+        if (highlightedIndex === -1) {
+          input.removeAttribute("aria-activedescendant");
+        }
+      }
+
+      function selectAirport(airport) {
+        airportState[type] = airport;
+        input.value = airportLabel(airport);
+        input.classList.remove("invalid");
+
+        setExpanded(false);
+        updateRoute();
+      }
+
+      function clearAirport() {
+        airportState[type] = null;
+        input.value = "";
+        input.classList.remove("invalid");
+        input.removeAttribute("aria-activedescendant");
+
+        setExpanded(false);
+      }
+
+      input.addEventListener("focus", () => {
+        if (!input.disabled) {
+          input.select();
+          renderResults("");
+        }
+      });
+
+      input.addEventListener("input", () => {
+        airportState[type] = null;
+        input.classList.remove("invalid");
+        renderResults(input.value);
+      });
+
+      input.addEventListener("keydown", (event) => {
+        const isOpen = results.classList.contains("open");
+
+        if (event.key === "ArrowDown") {
+          event.preventDefault();
+
+          if (!isOpen) {
+            renderResults(input.value);
+          }
+
+          highlightedIndex = Math.min(
+            highlightedIndex + 1,
+            matches.length - 1
+          );
+
+          updateHighlight();
+          return;
+        }
+
+        if (event.key === "ArrowUp") {
+          event.preventDefault();
+
+          if (!isOpen) {
+            renderResults(input.value);
+          }
+
+          highlightedIndex = Math.max(highlightedIndex - 1, 0);
+          updateHighlight();
+          return;
+        }
+
+        if (event.key === "Enter") {
+          event.preventDefault();
+
+          if (
+            highlightedIndex >= 0 &&
+            matches[highlightedIndex]
+          ) {
+            selectAirport(matches[highlightedIndex]);
+            return;
+          }
+
+          if (matches.length === 1) {
+            selectAirport(matches[0]);
+            return;
+          }
+
+          const normalizedInput = normalizeSearchText(input.value);
+
+          const exactAirport = airports.find((airport) => {
+            return (
+              normalizeSearchText(airport.iata) === normalizedInput ||
+              normalizeSearchText(airport.icao) === normalizedInput
+            );
+          });
+
+          if (exactAirport) {
+            selectAirport(exactAirport);
+          }
+
+          return;
+        }
+
+        if (event.key === "Escape") {
+          event.preventDefault();
+          setExpanded(false);
+          input.blur();
+        }
+      });
+
+      input.addEventListener("blur", () => {
+        window.setTimeout(() => {
+          const selectedAirport = airportState[type];
+
+          if (selectedAirport) {
+            input.value = airportLabel(selectedAirport);
+            input.classList.remove("invalid");
+          } else if (input.value.trim()) {
+            input.classList.add("invalid");
+          }
+
+          setExpanded(false);
+        }, 150);
+      });
+
+      clearButton.addEventListener("click", () => {
+        clearAirport();
+        input.focus();
+        renderResults("");
+      });
+
+      return {
+        selectAirport,
+        clearAirport
+      };
+    }
+
+    const originPicker = createAirportPicker("origin");
+    const destinationPicker = createAirportPicker("destination");
+
+    function findPreferredAirport(iataCode) {
+      const normalizedCode = String(iataCode).toUpperCase();
+
+      return airports.find((airport) => {
+        return airport.iata.toUpperCase() === normalizedCode;
+      });
+    }
+
+    function setDefaultAirports() {
+      const defaultOrigin =
+        findPreferredAirport("HKG") ||
+        findPreferredAirport("HND") ||
+        airports[0];
+
+      const defaultDestination =
+        findPreferredAirport("LHR") ||
+        findPreferredAirport("LAX") ||
+        airports[1] ||
+        airports[0];
+
+      originPicker.selectAirport(defaultOrigin);
+      destinationPicker.selectAirport(defaultDestination);
+    }
+
+    function toRadians(degrees) {
+      return (degrees * Math.PI) / 180;
+    }
+
+    function calculateGreatCircleDistance(
+      lat1,
+      lon1,
+      lat2,
+      lon2
+    ) {
+      const phi1 = toRadians(lat1);
+      const phi2 = toRadians(lat2);
+      const deltaPhi = toRadians(lat2 - lat1);
+      const deltaLambda = toRadians(lon2 - lon1);
+
+      const a =
+        Math.sin(deltaPhi / 2) ** 2 +
+        Math.cos(phi1) *
+          Math.cos(phi2) *
+          Math.sin(deltaLambda / 2) ** 2;
+
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+      return EARTH_RADIUS_KM * c;
+    }
+
+    function flightHoursFromDistance(distanceKm) {
+      if (!Number.isFinite(distanceKm) || distanceKm < 0) {
+        return 0;
+      }
+
+      return distanceKm / SPEED_KMH;
+    }
+
+    function turnaroundHoursFromDistance(distanceKm) {
+      if (!Number.isFinite(distanceKm) || distanceKm < 0) {
+        return 0;
+      }
+
+      if (distanceKm < 1500) {
+        return 1;
+      }
+
+      if (distanceKm < 4000) {
+        return 1.5;
+      }
+
+      if (distanceKm < 10000) {
+        return 2;
+      }
+
+      return 2.5;
+    }
+
+    function totalBlockHoursFromDistance(
+      distanceKm,
+      turnaroundCount = 2
+    ) {
+      return (
+        flightHoursFromDistance(distanceKm) +
+        turnaroundHoursFromDistance(distanceKm) * turnaroundCount
+      );
+    }
+
+    function distanceFromTargetBlockHours(
+      targetHours,
+      turnaroundCount = 2
+    ) {
+      if (!Number.isFinite(targetHours) || targetHours < 0) {
+        return null;
+      }
+
+      const distanceBands = [
+        {
+          minimum: 0,
+          maximum: 1500,
+          turnaroundHours: 1
+        },
+        {
+          minimum: 1500,
+          maximum: 4000,
+          turnaroundHours: 1.5
+        },
+        {
+          minimum: 4000,
+          maximum: 10000,
+          turnaroundHours: 2
+        },
+        {
+          minimum: 10000,
+          maximum: Infinity,
+          turnaroundHours: 2.5
+        }
+      ];
+
+      for (const band of distanceBands) {
+        const distance =
+          (targetHours -
+            band.turnaroundHours * turnaroundCount) *
+          SPEED_KMH;
+
+        const insideBand =
+          distance >= band.minimum &&
+          (band.maximum === Infinity ||
+            distance < band.maximum);
+
+        if (insideBand) {
+          return distance;
+        }
+      }
+
+      return null;
+    }
+
+    function formatDuration(decimalHours) {
+      if (!Number.isFinite(decimalHours) || decimalHours < 0) {
+        return "0h 0m";
+      }
+
+      const totalMinutes = Math.round(decimalHours * 60);
+      const hours = Math.floor(totalMinutes / 60);
+      const minutes = totalMinutes % 60;
+
+      return `${hours}h ${minutes}m`;
+    }
+
+    function getGeodesicPoints(
+      airportA,
+      airportB,
+      segments = 140
+    ) {
+      const latitude1 = toRadians(airportA.lat);
+      const longitude1 = toRadians(airportA.lon);
+      const latitude2 = toRadians(airportB.lat);
+      const longitude2 = toRadians(airportB.lon);
+
+      const angularDistance =
+        2 *
+        Math.asin(
+          Math.sqrt(
+            Math.sin((latitude1 - latitude2) / 2) ** 2 +
+              Math.cos(latitude1) *
+                Math.cos(latitude2) *
+                Math.sin((longitude1 - longitude2) / 2) ** 2
+          )
+        );
+
+      if (angularDistance < 0.0000001) {
+        return [[airportA.lat, airportA.lon]];
+      }
+
+      const points = [];
+
+      for (let index = 0; index <= segments; index++) {
+        const fraction = index / segments;
+
+        const componentA =
+          Math.sin((1 - fraction) * angularDistance) /
+          Math.sin(angularDistance);
+
+        const componentB =
+          Math.sin(fraction * angularDistance) /
+          Math.sin(angularDistance);
+
+        const x =
+          componentA *
+            Math.cos(latitude1) *
+            Math.cos(longitude1) +
+          componentB *
+            Math.cos(latitude2) *
+            Math.cos(longitude2);
+
+        const y =
+          componentA *
+            Math.cos(latitude1) *
+            Math.sin(longitude1) +
+          componentB *
+            Math.cos(latitude2) *
+            Math.sin(longitude2);
+
+        const z =
+          componentA * Math.sin(latitude1) +
+          componentB * Math.sin(latitude2);
+
+        const latitude = Math.atan2(
+          z,
+          Math.sqrt(x ** 2 + y ** 2)
+        );
+
+        const longitude = Math.atan2(y, x);
+
+        points.push([
+          (latitude * 180) / Math.PI,
+          (longitude * 180) / Math.PI
+        ]);
+      }
+
+      return points;
+    }
+
+    function splitAtInternationalDateLine(points) {
+      const routeParts = [[]];
+
+      for (let index = 0; index < points.length; index++) {
+        const currentPoint = points[index];
+        const previousPoint = points[index - 1];
+
+        if (
+          previousPoint &&
+          Math.abs(currentPoint[1] - previousPoint[1]) > 180
+        ) {
+          routeParts.push([]);
+        }
+
+        routeParts[routeParts.length - 1].push(currentPoint);
+      }
+
+      return routeParts.filter((part) => part.length > 0);
+    }
+
+    function resetRouteDisplays() {
+      distanceDisplay.textContent = "—";
+      timeDisplay.textContent = "—";
+      singleTurnaroundDisplay.textContent = "—";
+      turnaroundDisplay.textContent = "—";
+      totalBlockDisplay.textContent = "—";
+    }
+
+    function updateRoute() {
+      const origin = airportState.origin;
+      const destination = airportState.destination;
+
+      markerGroup.clearLayers();
+
+      if (routeLayer) {
+        map.removeLayer(routeLayer);
+        routeLayer = null;
+      }
+
+      if (!origin || !destination) {
+        resetRouteDisplays();
+        return;
+      }
+
+      const distance = calculateGreatCircleDistance(
+        origin.lat,
+        origin.lon,
+        destination.lat,
+        destination.lon
+      );
+
+      const flightHours = flightHoursFromDistance(distance);
+      const turnaroundHours =
+        turnaroundHoursFromDistance(distance);
+
+      const totalTurnaroundHours = turnaroundHours * 2;
+
+      const totalBlockHours =
+        flightHours + totalTurnaroundHours;
+
+      distanceDisplay.textContent = `${distance.toFixed(2)} km`;
+      timeDisplay.textContent = formatDuration(flightHours);
+
+      singleTurnaroundDisplay.textContent =
+        formatDuration(turnaroundHours);
+
+      turnaroundDisplay.textContent =
+        formatDuration(totalTurnaroundHours);
+
+      totalBlockDisplay.textContent =
+        formatDuration(totalBlockHours);
+
+      const originMarker = L.marker([
+        origin.lat,
+        origin.lon
+      ]).bindPopup(
+        `<strong>${escapeHtml(origin.city)}</strong><br>` +
+          `${escapeHtml(origin.name)}<br>` +
+          `${escapeHtml(origin.iata)} / ${escapeHtml(origin.icao)}`
+      );
+
+      const destinationMarker = L.marker([
+        destination.lat,
+        destination.lon
+      ]).bindPopup(
+        `<strong>${escapeHtml(destination.city)}</strong><br>` +
+          `${escapeHtml(destination.name)}<br>` +
+          `${escapeHtml(destination.iata)} / ${escapeHtml(destination.icao)}`
+      );
+
+      markerGroup.addLayer(originMarker);
+      markerGroup.addLayer(destinationMarker);
+
+      if (
+        origin.lat === destination.lat &&
+        origin.lon === destination.lon
+      ) {
+        map.setView([origin.lat, origin.lon], 7);
+        return;
+      }
+
+      const geodesicPoints = getGeodesicPoints(
+        origin,
+        destination
+      );
+
+      const routeParts =
+        splitAtInternationalDateLine(geodesicPoints);
+
+      routeLayer = L.layerGroup();
+
+      for (const part of routeParts) {
+        L.polyline(part, {
+          color: "#38bdf8",
+          weight: 4,
+          opacity: 0.86,
+          dashArray: "8, 8",
+          lineCap: "round"
+        }).addTo(routeLayer);
+      }
+
+      routeLayer.addTo(map);
+
+      const bounds = L.latLngBounds([
+        [origin.lat, origin.lon],
+        [destination.lat, destination.lon]
+      ]);
+
+      map.fitBounds(bounds, {
+        padding: [55, 55],
+        maxZoom: 6
+      });
+    }
+
+    swapButton.addEventListener("click", () => {
+      const previousOrigin = airportState.origin;
+      const previousDestination = airportState.destination;
+
+      if (!previousOrigin || !previousDestination) {
+        return;
+      }
+
+      originPicker.selectAirport(previousDestination);
+      destinationPicker.selectAirport(previousOrigin);
+    });
+
+    turnoverButton.addEventListener("click", updateRoute);
+
+    document
+      .getElementById("solve-time-btn")
+      .addEventListener("click", () => {
+        const distance = Number(solveDistanceInput.value);
+
+        if (!Number.isFinite(distance) || distance < 0) {
+          solveTimeOutput.textContent =
+            "Enter a valid distance of zero or greater.";
+
+          return;
+        }
+
+        const flightHours = flightHoursFromDistance(distance);
+        const turnaroundHours =
+          turnaroundHoursFromDistance(distance);
+
+        const totalHours = totalBlockHoursFromDistance(
+          distance,
+          2
+        );
+
+        solveTimeOutput.textContent =
+          `Flight: ${formatDuration(flightHours)} | ` +
+          `Turnaround ×2: ${formatDuration(
+            turnaroundHours * 2
+          )} | ` +
+          `Total: ${formatDuration(totalHours)}`;
+      });
+
+    document
+      .getElementById("solve-dist-btn")
+      .addEventListener("click", () => {
+        const targetHours = Number(solveTimeInput.value);
+
+        if (!Number.isFinite(targetHours) || targetHours < 0) {
+          solveDistanceOutput.textContent =
+            "Enter a valid target time of zero or greater.";
+
+          return;
+        }
+
+        const distance = distanceFromTargetBlockHours(
+          targetHours,
+          2
+        );
+
+        if (distance === null) {
+          solveDistanceOutput.textContent =
+            "No distance satisfies that total time under the turnaround bands.";
+
+          return;
+        }
+
+        const turnaroundHours =
+          turnaroundHoursFromDistance(distance);
+
+        solveDistanceOutput.textContent =
+          `${distance.toFixed(2)} km | ` +
+          `One turnaround: ${formatDuration(
+            turnaroundHours
+          )} | ` +
+          `Total block time: ${formatDuration(targetHours)}`;
+      });
+
+    document.addEventListener("click", (event) => {
+      const clickedInsidePicker = event.target.closest(
+        ".airport-picker"
+      );
+
+      if (clickedInsidePicker) {
+        return;
+      }
+
+      originResults.classList.remove("open");
+      destinationResults.classList.remove("open");
+
+      originInput.setAttribute("aria-expanded", "false");
+      destinationInput.setAttribute("aria-expanded", "false");
+    });
+
+    loadAirportDatabase();
+  </script>
+</body>
+</html>
