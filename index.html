@@ -1,1 +1,25 @@
 
+<!DOCTYPE HTML>
+<html lang="en-US">
+<head>
+    <meta charset="UTF-8">
+    <!-- 1. The primary redirect mechanism (0 seconds delay) -->
+    <meta http-equiv="refresh" content="0; url=sote.html">
+    
+    <!-- 2. SEO Best Practice: Tells search engines where the real page is -->
+    <link rel="canonical" href="site.html">
+    
+    <title>Page Redirection</title>
+    
+    <!-- 3. JavaScript Fallback: Runs instantly if the browser supports it -->
+    <script type="text/javascript">
+        window.location.href = "site.html";
+    </script>
+</head>
+<body>
+    <!-- 4. Manual Fallback: Shown if both Meta refresh and JavaScript fail -->
+    <p>If you are not redirected automatically, please follow this 
+       <a href="site.html">link to the main page</a>.
+    </p>
+</body>
+</html>
