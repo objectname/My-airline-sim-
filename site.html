@@ -3,15 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Widebody Code E GCD Flight Dashboard (A35K / 77W Compliant)</title>
+    <title>Widebody Fleet Dispatch Dashboard & Turnover Analytics</title>
     <!-- Leaflet.js CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com" />
     <style>
         :root {
             --bg-primary: #0f172a;
             --bg-surface: #1e293b;
             --text-main: #f8fafc;
             --accent-glow: #38bdf8;
+            --accent-success: #10b981;
             --border-muted: #334155;
         }
         * {
@@ -31,7 +32,7 @@
         header {
             background: var(--bg-surface);
             padding: 15px 20px;
-            border-b: 1px solid var(--border-muted);
+            border-bottom: 1px solid var(--border-muted);
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -57,12 +58,12 @@
             height: calc(100vh - 60px);
         }
         #sidebar {
-            width: 350px;
+            width: 380px;
             background: var(--bg-surface);
             padding: 20px;
             display: flex;
             flex-direction: column;
-            gap: 20px;
+            gap: 15px;
             border-right: 1px solid var(--border-muted);
             z-index: 10;
             overflow-y: auto;
@@ -74,229 +75,174 @@
         .control-group {
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 6px;
         }
         label {
-            font-size: 0.85rem;
+            font-size: 0.75rem;
             color: #94a3b8;
             text-transform: uppercase;
             letter-spacing: 0.05em;
+            font-weight: 600;
         }
-        select {
+        select, input {
             background: var(--bg-primary);
             color: var(--text-main);
             border: 1px solid var(--border-muted);
             padding: 10px;
             border-radius: 6px;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
             width: 100%;
             outline: none;
-            cursor: pointer;
         }
-        select:focus {
+        select:focus, input:focus {
             border-color: var(--accent-glow);
+        }
+        .btn {
+            background: var(--bg-primary);
+            color: var(--accent-glow);
+            border: 1px solid var(--accent-glow);
+            padding: 10px;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            letter-spacing: 0.05em;
+        }
+        .btn:hover {
+            background: var(--accent-glow);
+            color: var(--bg-primary);
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
         }
         .results-box {
             background: var(--bg-primary);
             border: 1px solid var(--border-muted);
             border-radius: 8px;
-            padding: 15px;
+            padding: 12px;
             display: flex;
             flex-direction: column;
-            gap: 12px;
-            margin-top: auto;
+            gap: 10px;
         }
         .result-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
         }
         .result-value {
             font-weight: bold;
             color: var(--accent-glow);
-            font-size: 1.1rem;
+            font-size: 1rem;
+        }
+        .tool-section {
+            border-top: 1px solid var(--border-muted);
+            padding-top: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
         }
         .info-note {
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             color: #64748b;
             line-height: 1.4;
+        }
+        .row-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
         }
     </style>
 </head>
 <body>
 
-    <header>
-        <h1>Widebody Aerodrome UX Dashboard</h1>
-        <div class="badge">ICAO Code E Compliant (A35K / B77W)</div>
-    </header>
+<header>
+    <h1>Widebody Operations Fleet Dashboard</h1>
+    <div class="badge">Enhanced Global Class A-Z Port Matrix</div>
+</header>
 
-    <div class="main-container">
-        <div id="sidebar">
-            <div class="control-group">
-                <label for="origin-select">Origin Airport</label>
-                <select id="origin-select"></select>
+<div class="main-container">
+    <div id="sidebar">
+        <!-- Route Matrix Section -->
+        <div class="control-group">
+            <label for="origin-select">Origin Airport</label>
+            <select id="origin-select"></select>
+        </div>
+        <div class="control-group">
+            <label for="destination-select">Destination Airport</label>
+            <select id="destination-select"></select>
+        </div>
+
+        <button class="btn" id="turnover-btn">Analyze Route Turnover Leg</button>
+
+        <!-- Live Metrics Readout -->
+        <div class="results-box">
+            <div class="result-item">
+                <span>GCD Flight Distance:</span>
+                <span id="distance-display" class="result-value">0.00 km</span>
             </div>
-
-            <div class="control-group">
-                <label for="destination-select">Destination Airport</label>
-                <select id="destination-select"></select>
+            <div class="result-item">
+                <span>Net Flight Duration:</span>
+                <span id="time-display" class="result-value">0h 0m</span>
             </div>
-
-            <div class="results-box">
-                <div class="result-item">
-                    <span>Great Circle Distance:</span>
-                    <span id="distance-display" class="result-value">0.00 km</span>
-                </div>
-                <div class="result-item">
-                    <span>Est. Flight Time:</span>
-                    <span id="time-display" class="result-value">0h 0m</span>
-                </div>
-                <div class="info-note">
-                    * Calculated at a strict predefined fleet configuration velocity of <strong>9360 / 22 km/h</strong> (~425.45 km/h). Geodesic curved routing applied.
-                </div>
+            <div class="result-item">
+                <span>Turnaround Overhead (x2):</span>
+                <span id="turnaround-display" class="result-value" style="color: #f59e0b;">0h 0m</span>
+            </div>
+            <div class="result-item" style="border-top: 1px dashed var(--border-muted); padding-top: 6px;">
+                <span>Total Frame Block-Time:</span>
+                <span id="total-block-display" class="result-value" style="color: var(--accent-success);">0h 0m</span>
             </div>
         </div>
 
-        <div id="map"></div>
+        <!-- Bidirectional Calculation Utilities -->
+        <div class="tool-section">
+            <label>Solver Utility: Time from Distance</label>
+            <div class="row-grid">
+                <input type="number" id="solve-dist-input" placeholder="Distance (km)">
+                <button class="btn" id="solve-time-btn">Solve Time</button>
+            </div>
+            <div class="info-note" id="solve-time-output"></div>
+        </div>
+
+        <div class="tool-section">
+            <label>Solver Utility: Distance from Targeted Block Time</label>
+            <div class="row-grid">
+                <input type="number" id="solve-time-input" placeholder="Block Hours (e.g. 12.5)">
+                <button class="btn" id="solve-dist-btn">Solve Dist</button>
+            </div>
+            <div class="info-note" id="solve-dist-output"></div>
+        </div>
+
+        <div class="info-note">
+            * Speed Profile: Fixed <strong>9360 / 22 km/h</strong> (~425.45 km/h). Turnaround constraints account for multi-leg dependencies.
+        </div>
     </div>
+    
+    <div id="map"></div>
+</div>
 
-    <!-- Leaflet.js JS -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script>
-        const airports = [{"iata": "JFK", "icao": "KJFK", "name": "John F. Kennedy International Airport", "city": "New York", "lat": 40.6398, "lon": -73.7789}, {"iata": "LAX", "icao": "KLAX", "name": "Los Angeles International Airport", "city": "Los Angeles", "lat": 34.0522, "lon": -118.2437}, {"iata": "LHR", "icao": "EGLL", "name": "London Heathrow Airport", "city": "London", "lat": 51.47, "lon": -0.4543}, {"iata": "CDG", "icao": "LFPG", "name": "Charles de Gaulle Airport", "city": "Paris", "lat": 49.0097, "lon": 2.5479}, {"iata": "FRA", "icao": "EDDF", "name": "Frankfurt Airport", "city": "Frankfurt", "lat": 50.0333, "lon": 8.5706}, {"iata": "DXB", "icao": "OMDB", "name": "Dubai International Airport", "city": "Dubai", "lat": 25.2532, "lon": 55.3657}, {"iata": "HKG", "icao": "VHHH", "name": "Hong Kong International Airport", "city": "Hong Kong", "lat": 22.308, "lon": 113.9185}, {"iata": "SIN", "icao": "WSSS", "name": "Singapore Changi Airport", "city": "Singapore", "lat": 1.3502, "lon": 103.9944}, {"iata": "HND", "icao": "RJTT", "name": "Tokyo Haneda Airport", "city": "Tokyo", "lat": 35.5494, "lon": 139.7798}, {"iata": "NRT", "icao": "RJAA", "name": "Tokyo Narita International Airport", "city": "Tokyo", "lat": 35.7767, "lon": 140.3864}, {"iata": "ICN", "icao": "RKSI", "name": "Incheon International Airport", "city": "Seoul", "lat": 37.4602, "lon": 126.4407}, {"iata": "PVG", "icao": "ZSPD", "name": "Shanghai Pudong International Airport", "city": "Shanghai", "lat": 31.1443, "lon": 121.8083}, {"iata": "PEK", "icao": "ZBAA", "name": "Beijing Capital International Airport", "city": "Beijing", "lat": 40.0799, "lon": 116.5971}, {"iata": "CAN", "icao": "ZGGG", "name": "Guangzhou Baiyun International Airport", "city": "Guangzhou", "lat": 23.3924, "lon": 113.2988}, {"iata": "SYD", "icao": "YSSY", "name": "Sydney Kingsford Smith Airport", "city": "Sydney", "lat": -33.9461, "lon": 151.1772}, {"iata": "MEL", "icao": "YMML", "name": "Melbourne Airport", "city": "Melbourne", "lat": -37.669, "lon": 144.841}, {"iata": "AMS", "icao": "EHAM", "name": "Amsterdam Airport Schiphol", "city": "Amsterdam", "lat": 52.3105, "lon": 4.7683}, {"iata": "IST", "icao": "LTFM", "name": "Istanbul Airport", "city": "Istanbul", "lat": 41.2753, "lon": 28.7519}, {"iata": "DOH", "icao": "OTHH", "name": "Hamad International Airport", "city": "Doha", "lat": 25.2611, "lon": 51.5651}, {"iata": "ORD", "icao": "KORD", "name": "O'Hare International Airport", "city": "Chicago", "lat": 41.9742, "lon": -87.9073}, {"iata": "SFO", "icao": "KSFO", "name": "San Francisco International Airport", "city": "San Francisco", "lat": 37.6213, "lon": -122.379}, {"iata": "DFW", "icao": "KDFW", "name": "Dallas/Fort Worth International Airport", "city": "Dallas", "lat": 32.8998, "lon": -97.0403}, {"iata": "ATL", "icao": "KATL", "name": "Hartsfield-Jackson Atlanta International Airport", "city": "Atlanta", "lat": 33.6407, "lon": -84.4277}, {"iata": "MIA", "icao": "KMIA", "name": "Miami International Airport", "city": "Miami", "lat": 25.7959, "lon": -80.287}, {"iata": "YYZ", "icao": "CYYZ", "name": "Toronto Pearson International Airport", "city": "Toronto", "lat": 43.6777, "lon": -79.6248}, {"iata": "YVR", "icao": "CYVR", "name": "Vancouver International Airport", "city": "Vancouver", "lat": 49.1967, "lon": -123.184}, {"iata": "GRU", "icao": "SBGR", "name": "S\u00e3o Paulo/Guarulhos International Airport", "city": "S\u00e3o Paulo", "lat": -23.4356, "lon": -46.4731}, {"iata": "EZE", "icao": "SAEZ", "name": "Ministro Pistarini International Airport", "city": "Buenos Aires", "lat": -34.8222, "lon": -58.5358}, {"iata": "JNB", "icao": "FAOR", "name": "O. R. Tambo International Airport", "city": "Johannesburg", "lat": -26.1367, "lon": 28.246}, {"iata": "CPT", "icao": "FACT", "name": "Cape Town International Airport", "city": "Cape Town", "lat": -33.9715, "lon": 18.6021}, {"iata": "BKK", "icao": "VTBS", "name": "Suvarnabhumi Airport", "city": "Bangkok", "lat": 13.6925, "lon": 100.7508}, {"iata": "KUL", "icao": "WMKK", "name": "Kuala Lumpur International Airport", "city": "Kuala Lumpur", "lat": 2.7456, "lon": 101.7099}, {"iata": "MNL", "icao": "RPLL", "name": "Ninoy Aquino International Airport", "city": "Manila", "lat": 14.5086, "lon": 121.0194}, {"iata": "DEL", "icao": "VIDP", "name": "Indira Gandhi International Airport", "city": "Delhi", "lat": 28.5562, "lon": 77.1}, {"iata": "BOM", "icao": "VABB", "name": "Chhatrapati Shivaji Maharaj International Airport", "city": "Mumbai", "lat": 19.0896, "lon": 72.8656}, {"iata": "ZRH", "icao": "LSZH", "name": "Zurich Airport", "city": "Zurich", "lat": 47.4582, "lon": 8.5555}, {"iata": "MAD", "icao": "LEMD", "name": "Adolfo Su\u00e1rez Madrid-Barajas Airport", "city": "Madrid", "lat": 40.4839, "lon": -3.568}, {"iata": "BCN", "icao": "LEBL", "name": "Josep Tarradellas Barcelona-El Prat Airport", "city": "Barcelona", "lat": 41.2974, "lon": 2.0833}, {"iata": "FCO", "icao": "LIRF", "name": "Leonardo da Vinci-Fiumicino Airport", "city": "Rome", "lat": 41.8003, "lon": 12.2389}, {"iata": "MXP", "icao": "LIMC", "name": "Milan Malpensa Airport", "city": "Milan", "lat": 45.63, "lon": 8.7231}, {"iata": "MUC", "icao": "EDDM", "name": "Munich Airport", "city": "Munich", "lat": 48.3538, "lon": 11.7861}, {"iata": "CPH", "icao": "EKCH", "name": "Copenhagen Airport", "city": "Copenhagen", "lat": 55.6179, "lon": 12.656}, {"iata": "ARN", "icao": "ESSA", "name": "Stockholm Arlanda Airport", "city": "Stockholm", "lat": 59.6519, "lon": 17.9186}, {"iata": "HEL", "icao": "EFHK", "name": "Helsinki Airport", "city": "Helsinki", "lat": 60.3172, "lon": 24.9633}, {"iata": "DME", "icao": "UUDD", "name": "Domodedovo International Airport", "city": "Moscow", "lat": 55.4088, "lon": 37.9061}, {"iata": "SVO", "icao": "UUEE", "name": "Sheremetyevo International Airport", "city": "Moscow", "lat": 55.9726, "lon": 37.4146}, {"iata": "AUH", "icao": "OMAA", "name": "Zayed International Airport", "city": "Abu Dhabi", "lat": 24.433, "lon": 54.6511}, {"iata": "RUH", "icao": "OERK", "name": "King Khalid International Airport", "city": "Riyadh", "lat": 24.9576, "lon": 46.6988}, {"iata": "JED", "icao": "OEJN", "name": "King Abdulaziz International Airport", "city": "Jeddah", "lat": 21.6796, "lon": 39.1565}, {"iata": "MEX", "icao": "MMMX", "name": "Mexico City International Airport", "city": "Mexico City", "lat": 19.4363, "lon": -99.0721}, {"iata": "TPE", "icao": "RCTP", "name": "Taoyuan International Airport", "city": "Taipei", "lat": 25.0797, "lon": 121.2342}, {"iata": "KIX", "icao": "RJBB", "name": "Kansai International Airport", "city": "Osaka", "lat": 34.432, "lon": 135.2301}, {"iata": "AKL", "icao": "NZAA", "name": "Auckland Airport", "city": "Auckland", "lat": -37.0081, "lon": 174.7917}, {"iata": "CHC", "icao": "NZCH", "name": "Christchurch International Airport", "city": "Christchurch", "lat": -43.4894, "lon": 172.5322}, {"iata": "PER", "icao": "YPPH", "name": "Perth Airport", "city": "Perth", "lat": -31.9403, "lon": 115.9669}, {"iata": "BNE", "icao": "YBBN", "name": "Brisbane Airport", "city": "Brisbane", "lat": -27.3842, "lon": 153.1175}, {"iata": "SCL", "icao": "SCEL", "name": "Arturo Merino Ben\u00edtez International Airport", "city": "Santiago", "lat": -33.393, "lon": -70.7858}, {"iata": "LIM", "icao": "SPJC", "name": "Jorge Ch\u00e1vez International Airport", "city": "Lima", "lat": -12.0219, "lon": -77.1143}, {"iata": "BOG", "icao": "SKBO", "name": "El Dorado International Airport", "city": "Bogot\u00e1", "lat": 4.7016, "lon": -74.1469}, {"iata": "PTY", "icao": "MPTO", "name": "Tocumen International Airport", "city": "Panama City", "lat": 9.0714, "lon": -79.3835}, {"iata": "SEA", "icao": "KSEA", "name": "Seattle-Tacoma International Airport", "city": "Seattle", "lat": 47.4489, "lon": -122.3093}, {"iata": "IAH", "icao": "KIAH", "name": "George Bush Intercontinental Airport", "city": "Houston", "lat": 29.9804, "lon": -95.3397}, {"iata": "DEN", "icao": "KDEN", "name": "Denver International Airport", "city": "Denver", "lat": 39.8561, "lon": -104.6737}, {"iata": "EWR", "icao": "KEWR", "name": "Newark Liberty International Airport", "city": "Newark", "lat": 40.6925, "lon": -74.1683}, {"iata": "BOS", "icao": "KBOS", "name": "Logan International Airport", "city": "Boston", "lat": 42.3643, "lon": -71.0052}, {"iata": "IAD", "icao": "KIAD", "name": "Washington Dulles International Airport", "city": "Washington", "lat": 38.9531, "lon": -77.4565}, {"iata": "MSP", "icao": "KMSP", "name": "Minneapolis-Saint Paul International Airport", "city": "Minneapolis", "lat": 44.8805, "lon": -93.2169}, {"iata": "DTW", "icao": "KDTW", "name": "Detroit Metropolitan Airport", "city": "Detroit", "lat": 42.2125, "lon": -83.3533}, {"iata": "PHX", "icao": "KPHX", "name": "Phoenix Sky Harbor International Airport", "city": "Phoenix", "lat": 33.4343, "lon": -112.0081}, {"iata": "CLT", "icao": "KCLT", "name": "Charlotte Douglas International Airport", "city": "Charlotte", "lat": 35.214, "lon": -80.9431}, {"iata": "MCO", "icao": "KMCO", "name": "Orlando International Airport", "city": "Orlando", "lat": 28.4287, "lon": -81.316}, {"iata": "LAS", "icao": "KLAS", "name": "Harry Reid International Airport", "city": "Las Vegas", "lat": 36.084, "lon": -115.1537}, {"iata": "MAN", "icao": "EGCC", "name": "Manchester Airport", "city": "Manchester", "lat": 53.3588, "lon": -2.2749}, {"iata": "DUB", "icao": "EIDW", "name": "Dublin Airport", "city": "Dublin", "lat": 53.4214, "lon": -6.2701}, {"iata": "VIE", "icao": "LOWW", "name": "Vienna International Airport", "city": "Vienna", "lat": 48.1103, "lon": 16.5697}, {"iata": "BRU", "icao": "EBBR", "name": "Brussels Airport", "city": "Brussels", "lat": 50.9014, "lon": 4.4844}, {"iata": "ATH", "icao": "LGAV", "name": "Athens International Airport", "city": "Athens", "lat": 37.9364, "lon": 23.9445}, {"iata": "LIS", "icao": "LPPT", "name": "Humberto Delgado Airport", "city": "Lisbon", "lat": 38.7742, "lon": -9.1342}, {"iata": "KBP", "icao": "UKBB", "name": "Boryspil International Airport", "city": "Kyiv", "lat": 50.345, "lon": 30.8947}, {"iata": "CAI", "icao": "HECA", "name": "Cairo International Airport", "city": "Cairo", "lat": 30.1219, "lon": 31.4056}, {"iata": "ADD", "icao": "HAAB", "name": "Addis Ababa Bole International Airport", "city": "Addis Ababa", "lat": 8.9778, "lon": 38.7993}, {"iata": "NBO", "icao": "HKJK", "name": "Jomo Kenyatta International Airport", "city": "Nairobi", "lat": -1.3192, "lon": 36.9275}, {"iata": "CMN", "icao": "GMMN", "name": "Mohammed V International Airport", "city": "Casablanca", "lat": 33.3675, "lon": -7.5898}, {"iata": "MCT", "icao": "OOMS", "name": "Muscat International Airport", "city": "Muscat", "lat": 23.5933, "lon": 58.2844}, {"iata": "BAH", "icao": "OBBI", "name": "Bahrain International Airport", "city": "Manama", "lat": 26.2708, "lon": 50.6336}, {"iata": "KWI", "icao": "OKBK", "name": "Kuwait International Airport", "city": "Kuwait City", "lat": 29.2266, "lon": 47.9689}, {"iata": "CGK", "icao": "WIII", "name": "Soekarno-Hatta International Airport", "city": "Jakarta", "lat": -6.1256, "lon": 106.6558}, {"iata": "SGN", "icao": "VVTS", "name": "Tan Son Nhat International Airport", "city": "Ho Chi Minh City", "lat": 10.8188, "lon": 106.6519}, {"iata": "HAN", "icao": "VVNB", "name": "Noi Bai International Airport", "city": "Hanoi", "lat": 21.2212, "lon": 105.8072}, {"iata": "TXL", "icao": "EDDT", "name": "Berlin Tegel Airport (Historical)", "city": "Berlin", "lat": 52.5597, "lon": 13.2877}, {"iata": "BER", "icao": "EDDB", "name": "Berlin Brandenburg Airport", "city": "Berlin", "lat": 52.3667, "lon": 13.5033}];
-
-        // Initialize Map
-        const map = L.map('map').setView([20, 0], 2);
-
-        // Tile layers
-        const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '© OpenStreetMap contributors'
-        });
-
-        const esriSatellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-            attribution: 'Tiles © Esri — Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
-        });
-
-        // Add default layer
-        esriSatellite.addTo(map);
-
-        // Layer Control Layer configuration
-        const baseMaps = {
-            "Satellite Imagery": esriSatellite,
-            "OpenStreetMap": osm
-        };
-        L.control.layers(baseMaps, null, { position: 'topright' }).addTo(map);
-
-        // Populate selects
-        const originSelect = document.getElementById('origin-select');
-        const destSelect = document.getElementById('destination-select');
-
-        function populateDropdown(selectElement, defaultValue) {
-            airports.sort((a,b) => a.city.localeCompare(b.city)).forEach(ap => {
-                const opt = document.createElement('option');
-                opt.value = ap.iata;
-                opt.textContent = `${ap.city} (${ap.iata} / ${ap.icao}) - ${ap.name}`;
-                if(ap.iata === defaultValue) opt.selected = true;
-                selectElement.appendChild(opt);
-            });
-        }
-
-        populateDropdown(originSelect, "JFK");
-        populateDropdown(destSelect, "LHR");
-
-        let routeLayer = null;
-        let markerGroup = L.layerGroup().addTo(map);
-
-        // Haversine Formula for GCD
-        function calculateGCD(lat1, lon1, lat2, lon2) {
-            const R = 6371; // Earth's radius in km
-            const dLat = (lat2 - lat1) * Math.PI / 180;
-            const dLon = (lon2 - lon1) * Math.PI / 180;
-            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                      Math.sin(dLon/2) * Math.sin(dLon/2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-            return R * c;
-        }
-
-        // Generate geodesic points along Great Circle arc
-        function getGeodesicPoints(p1, p2, segments = 100) {
-            const lat1 = p1.lat * Math.PI / 180;
-            const lon1 = p1.lon * Math.PI / 180;
-            const lat2 = p2.lat * Math.PI / 180;
-            const lon2 = p2.lon * Math.PI / 180;
-
-            const d = 2 * Math.asin(Math.sqrt(Math.sin((lat1 - lat2) / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin((lon1 - lon2) / 2) ** 2));
-            const points = [];
-
-            for (let i = 0; i <= segments; i++) {
-                const f = i / segments;
-                const A = Math.sin((1 - f) * d) / Math.sin(d);
-                const B = Math.sin(f * d) / Math.sin(d);
-                const x = A * Math.cos(lat1) * Math.cos(lon1) + B * Math.cos(lat2) * Math.cos(lon2);
-                const y = A * Math.cos(lat1) * Math.sin(lon1) + B * Math.cos(lat2) * Math.sin(lon2);
-                const z = A * Math.sin(lat1) + B * Math.sin(lat2);
-                const lat = Math.atan2(z, Math.sqrt(x ** 2 + y ** 2));
-                const lon = Math.atan2(y, x);
-                points.push([lat * 180 / Math.PI, lon * 180 / Math.PI]);
-            }
-            return points;
-        }
-
-        function updateRoute() {
-            const originAp = airports.find(a => a.iata === originSelect.value);
-            const destAp = airports.find(a => a.iata === destSelect.value);
-
-            if (!originAp || !destAp) return;
-
-            // Clear previous map layers
-            markerGroup.clearLayers();
-            if (routeLayer) {
-                map.removeLayer(routeLayer);
-            }
-
-            // Add airport markers
-            const originMarker = L.marker([originAp.lat, originAp.lon]).bindPopup(`<b>${originAp.city}</b><br>${originAp.name}`);
-            const destMarker = L.marker([destAp.lat, destAp.lon]).bindPopup(`<b>${destAp.city}</b><br>${destAp.name}`);
-            markerGroup.addLayer(originMarker);
-            markerGroup.addLayer(destMarker);
-
-            if (originAp.iata === destAp.iata) {
-                document.getElementById('distance-display').textContent = "0.00 km";
-                document.getElementById('time-display').textContent = "0h 0m";
-                return;
-            }
-
-            // Distance & Time Calculation
-            const distance = calculateGCD(originAp.lat, originAp.lon, destAp.lat, destAp.lon);
-            const speed = 9360 / 22; // ~425.4545 km/h
-            const totalHours = distance / speed;
-            const hours = Math.floor(totalHours);
-            const minutes = Math.round((totalHours - hours) * 60);
-
-            document.getElementById('distance-display').textContent = `${distance.toFixed(2)} km`;
-            document.getElementById('time-display').textContent = `${hours}h ${minutes}m`;
-
-            // Draw Curved Geodesic Path
-            const pathPoints = getGeodesicPoints(originAp, destAp);
-            routeLayer = L.polyline(pathPoints, {
-                color: '#38bdf8',
-                weight: 4,
-                opacity: 0.8,
-                dashArray: '1, 5'
-            }).addTo(map);
-
-            // Fit map bounds
-            map.fitBounds(routeLayer.getBounds(), { padding: [50, 50] });
-        }
-
-        originSelect.addEventListener('change', updateRoute);
-        destSelect.addEventListener('change', updateRoute);
-
-        // Run on initial load
-        updateRoute();
-    </script>
-</body>
-</html>
+<!-- Leaflet.js JavaScript Bundle -->
+<script src="https://unpkg.com"></script>
+<script>
+    // Expanded global airport library mapping classes ABCDEFGH... to operational regions
+    const airports = [
+        {"iata": "AMS", "icao": "EHAM", "name": "Amsterdam Schiphol", "city": "Amsterdam", "lat": 52.3105, "lon": 4.7683},
+        {"iata": "ATL", "icao": "KATL", "name": "Hartsfield-Jackson Atlanta", "city": "Atlanta", "lat": 33.6407, "lon": -84.4277},
+        {"iata": "BKK", "icao": "VTBS", "name": "Suvarnabhumi Airport", "city": "Bangkok", "lat": 13.6925, "lon": 100.7508},
+        {"iata": "BNE", "icao": "YBBN", "name": "Brisbane Airport", "city": "Brisbane", "lat": -27.3842, "lon": 153.1175},
+        {"iata": "BOG", "icao": "SKBO", "name": "El Dorado International", "city": "Bogotá", "lat": 4.7016, "lon": -74.1469},
+        {"iata": "BOS", "icao": "KBOS", "name": "Logan International Airport", "city": "Boston", "lat": 42.3643, "lon": -71.0052},
+        {"iata": "BRU", "icao": "EBBR", "name": "Brussels Airport", "city": "Brussels", "lat": 50.9014, "lon": 4.4844},
+        {"iata": "CAI", "icao": "HECA", "name": "Cairo International Airport", "city": "Cairo", "lat": 30.1219, "lon": 31.4056},
+        {"iata": "CDG", "icao": "LFPG", "name": "Charles de Gaulle Airport", "city": "Paris", "lat": 49.0097, "lon": 2.5479},
+        {"iata": "CPH", "icao": "EKCH", "name": "Copenhagen Airport", "city": "Copenhagen", "lat": 55.6179, "lon": 12.656},
+        {"iata": "CPT", "icao": "FACT", "name": "Cape Town International", "city": "Cape Town", "lat": -33.9715, "lon": 18.6021},
+        {"iata": "DEL", "icao": "VIDP", "name": "Indira Gandhi International", "city": "Delhi", "lat": 28.5562, "lon": 77.1},
+        {"iata": "DFW", "icao": "KDFW", "name": "Dallas/Fort Worth International", "city": "Dallas", "lat": 32.8998, "lon": -97.0403},
+        {"iata": "DOH", "icao": "OTHH", "name": "Hamad International Airport", "city": "Doha", "lat": 25.2611, "lon": 51.5651},
+        {"iata": "DXB", "icao": "OMDB", "name": "Dubai International Airport", "city": "Dubai", "lat": 25.2532, "lon": 55.3657},
+        {"iata": "EZE", "icao": "SAEZ", "name": "Ministro Pistarini International", "city": "Buenos Aires", "lat": -34.8222, "lon": -58.5358},
+        {"iata": "FRA", "icao": "EDDF", "name": "Frankfurt Airport", "city": "Frankfurt", "lat": 50.0333, "lon": 8.5706},
+        {"iata": "GRU", "icao": "SBGR", "name": "Guarulhos International", "city": "São Paulo", "lat": -23.4356, "lon": -46.4731},
+        {"iata": "HKG", "icao": "VHHH", "name": "Hong Kong International", "city": "Hong Kong", "lat": 22.308, "lon": 113.9185},
