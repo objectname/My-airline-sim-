@@ -1,281 +1,107 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
-  />
+/* New select styles for Airport B filters */
+select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  outline: none;
+  background: var(--bg-primary);
+  color: var(--text-main);
+  font-size: 0.86rem;
+}
 
-  <title>Widebody Flight Distance Dashboard</title>
-<link rel="stylesheet" href="site.css" />
+select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgb(56 189 248 / 0.12);
+}
 
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-  />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+/* Mobile responsive styles */
 
-  <script src="https://cesium.com/downloads/cesiumjs/releases/1.116/Build/Cesium/Cesium.js"></script>
-  <link href="https://cesium.com/downloads/cesiumjs/releases/1.116/Build/Cesium/Widgets/widgets.css" rel="stylesheet" />
-</head>
+#cesiumContainer {
+position: absolute;
+inset: 0;
+z-index: 900;
+display: none;
+background: #000;
+}
+#cesiumContainer.visible {
+display: block;
+}
 
-<body>
-  <header>
-    <h1>Widebody Flight Distance Dashboard</h1>
-    <div class="badge">Airport Search + Route Match</div>
-  
-<button id="toggle-map-btn" class="btn map-toggle-btn" type="button" aria-pressed="false">
-  Open Globe
-</button>
-</header>
+.leaflet-control-layers-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  min-height: 28px;
+}
 
-  <main class="main-container">
-    <aside id="sidebar">
-      <div id="data-status" class="status">
-        <span class="status-dot"></span>
-        <span id="data-status-text">Loading airports.csv…</span>
-      </div>
+.leaflet-control-layers-toggle .map-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px;
+  border: 1px solid rgb(148 163 184 / 0.35);
+  border-radius: 4px;
+  background: rgb(15 23 42 / 0.72);
+  color: #e2e8f0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+}
 
-      <div class="airport-grid">
-        <div class="control-group airport-picker">
-          <label for="origin-input">Airport A — Origin</label>
+@media (max-width: 850px) {
+  body {
+    overflow: auto;
+    min-height: 100vh;
+  }
 
-          <div class="combobox">
-            <input
-              id="origin-input"
-              class="airport-search"
-              type="text"
-              autocomplete="off"
-              disabled
-              placeholder="Loading airport database…"
-              role="combobox"
-              aria-autocomplete="list"
-              aria-expanded="false"
-              aria-controls="origin-results"
-            />
+  header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 
-            <button
-              id="origin-clear-btn"
-              class="input-icon-btn"
-              type="button"
-              disabled
-              aria-label="Clear origin"
-              title="Clear origin"
-            >
-              ×
-            </button>
+  .main-container {
+    flex-direction: column;
+    min-height: 100vh;
+  }
 
-            <div
-              id="origin-results"
-              class="airport-results"
-              role="listbox"
-            ></div>
-          </div>
-        </div>
+  #sidebar {
+    width: 100%;
+    min-width: 0;
+    max-height: 58vh;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+    flex: 0 0 auto;
+  }
 
-        <div class="swap-wrap">
-          <button
-            id="swap-route-btn"
-            class="swap-btn"
-            type="button"
-            disabled
-            aria-label="Swap origin and destination"
-            title="Swap route"
-          >
-            ⇄
-          </button>
-        </div>
+  #map {
+    flex: 1 1 40vh;
+    min-height: 40vh;
+    height: auto;
+    width: 100%;
+    display: block;
+  }
 
-        <div class="control-group airport-picker">
-          <label for="destination-input">Airport B — Destination</label>
+  .airport-grid {
+    grid-template-columns: 1fr;
+  }
 
-          <div class="combobox">
-            <input
-              id="destination-input"
-              class="airport-search"
-              type="text"
-              autocomplete="off"
-              disabled
-              placeholder="Loading airport database…"
-              role="combobox"
-              aria-autocomplete="list"
-              aria-expanded="false"
-              aria-controls="destination-results"
-            />
+  .swap-wrap {
+    height: auto;
+  }
 
-            <button
-              id="destination-clear-btn"
-              class="input-icon-btn"
-              type="button"
-              disabled
-              aria-label="Clear destination"
-              title="Clear destination"
-            >
-              ×
-            </button>
+  .swap-btn {
+    width: 100%;
+    height: 35px;
+    border-radius: 6px;
+  }
 
-            <div
-              id="destination-results"
-              class="airport-results"
-              role="listbox"
-            ></div>
-          </div>
-        </div>
-      </div>
-
-      <button id="turnover-btn" class="btn" type="button" disabled>
-        Analyze Route
-      </button>
-
-      <section class="results-box">
-        <div class="result-item">
-          <span>Great-circle distance</span>
-          <span id="distance-display" class="result-value">—</span>
-        </div>
-
-        <div class="result-item">
-          <span>One-way flight time</span>
-          <span id="time-display" class="result-value">—</span>
-        </div>
-
-        <div class="result-item">
-          <span>Route turnaround</span>
-          <span
-            id="turnaround-display"
-            class="result-value warning"
-          >
-            —
-          </span>
-        </div>
-
-        <div class="result-item divider">
-          <span>Total block time</span>
-          <span
-            id="total-block-display"
-            class="result-value success"
-          >
-            —
-          </span>
-        </div>
-      </section>
-
-      <section class="tool-section">
-        <label for="solve-dist-input">Time from distance</label>
-
-        <div class="row-grid">
-          <input
-            id="solve-dist-input"
-            type="number"
-            min="0"
-            step="0.01"
-            placeholder="Distance km"
-          />
-
-          <button id="solve-time-btn" class="btn" type="button">
-            Solve
-          </button>
-        </div>
-
-        <div id="solve-time-output" class="solver-output"></div>
-      </section>
-
-      <section class="tool-section">
-        <label for="solve-time-input">
-          Distance from target total time
-        </label>
-
-        <div class="row-grid">
-          <input
-            id="solve-time-input"
-            type="number"
-            min="0"
-            step="0.01"
-            placeholder="Block hours"
-          />
-
-          <button id="solve-dist-btn" class="btn" type="button">
-            Solve
-          </button>
-        </div>
-
-        <div id="solve-dist-output" class="solver-output"></div>
-      </section>
-
-      <section class="tool-section">
-        <label for="airport-b-type">
-          Airport B class/type filter
-        </label>
-
-        <select id="airport-b-type">
-          <option value="all">All airport types</option>
-        </select>
-
-        <label for="airport-b-result-count">
-          Similar Airport B results
-        </label>
-
-        <select id="airport-b-result-count">
-          <option value="5">Show 5</option>
-          <option value="10" selected>Show 10</option>
-          <option value="20">Show 20</option>
-          <option value="50">Show 50</option>
-        </select>
-
-        <p class="info-note">
-          Filter Airport B by airport class and choose how many similar results to show.
-        </p>
-
-        <label for="airport-finder-distance">
-          Find Airport B from Airport A
-        </label>
-
-        <div class="row-grid">
-          <input
-            id="airport-finder-distance"
-            type="number"
-            min="0"
-            step="1"
-            placeholder="Target km"
-          />
-
-          <button
-            id="airport-finder-btn"
-            class="btn"
-            type="button"
-            disabled
-          >
-            Find B
-          </button>
-        </div>
-
-        <p class="info-note">
-          Searches the loaded CSV for up to 10 Airport B options
-          within ±100 km of your target distance from Airport A.
-        </p>
-
-        <div
-          id="airport-finder-output"
-          class="airport-finder-output"
-        ></div>
-      </section>
-
-      <p class="info-note">
-        Fixed speed: <strong>9360 ÷ 22 = 425.4545 km/h</strong>.
-        Route turnaround bands: under 1,500 km = 1h;
-        1,500–3,999.99 km = 1h 30m;
-        4,000–9,999.99 km = 2h;
-        10,000 km or above = 2h 30m.
-        A 9,360 km route therefore calculates as 22h flight +
-        2h turnaround = <strong>24h total</strong>.
-      </p>
-    </aside>
-
-    <div id="map-view">
-      <div id="map"></div>
-      <div id="cesiumContainer"></div>
-    </div>
-  </main>
-<script src="main.js"></script>
-</body>
-</html>
+  .airport-results {
+    position: fixed;
+    right: 14px;
+    left: 14px;
+    max-height: 42vh;
+  }
+}
