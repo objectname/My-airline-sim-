@@ -11,7 +11,7 @@
     #airport-b-type and #airport-b-result-count exist in index.html.
 */
 
-const CSV_FILE = "airports.csv.txt";
+const CSV_FILE = "airports.csv";
 
 const SPEED_KMH = 9360 / 22;
 const EARTH_RADIUS_KM = 6371;
