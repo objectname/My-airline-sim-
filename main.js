@@ -593,7 +593,6 @@ function parseAirportCsv(csvText) {
 
     if (
       !name ||
-      !hasAirportCode ||
       !validCoordinates ||
       EXCLUDED_AIRPORT_TYPES.has(type)
     ) {
@@ -601,8 +600,7 @@ function parseAirportCsv(csvText) {
     }
 
     const uniqueKey = [
-      iata,
-      icao,
+      iata || icao || name,
       latitude,
       longitude
     ].join("|");
