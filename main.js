@@ -133,9 +133,9 @@ satelliteMap.addTo(map);
 const layerControl = L.control
   .layers(
     {
-      "Base globe (OpenStreetMap)": baseGlobeLayer,
-      "Satellite globe": satelliteGlobeLayer,
-      OpenStreetMap: openStreetMap,
+      "Basic Globe": baseGlobeLayer,
+      "Satellite Globe": satelliteGlobeLayer,
+      "Basic map" : openStreetMap,
       "Satellite map": satelliteMap
     },
     null,
